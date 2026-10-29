@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1005077072548",
+    "firebase_url": "https://agrimatico-fleet-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "agrimatico-fleet",
+    "storage_bucket": "agrimatico-fleet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005077072548:android:3fd6fabc81177176967431",
+        "android_client_info": {
+          "package_name": "com.fleet.tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLDwNeAXpFOgTOdVz2YYXCwRe9AiTz2nI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
