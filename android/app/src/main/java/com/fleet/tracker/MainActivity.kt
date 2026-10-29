@@ -11,7 +11,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = Store(this)
+        store = Store.get(this)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         setContentView(R.layout.activity_main)
         val nav = findViewById<BottomNavigationView>(R.id.nav)
@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
         if (savedInstanceState == null) nav.selectedItemId = R.id.t_trip
+        SyncWorker.schedulePeriodic(this)
     }
 
     private fun show(f: Fragment) {
@@ -32,6 +33,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (store.dirty && store.configured()) Syncer.run(store)
+        if (store.dirty && store.configured()) { Syncer.run(store, false); SyncWorker.enqueue(this) }
     }
 }

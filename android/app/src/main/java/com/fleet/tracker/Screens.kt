@@ -42,6 +42,35 @@ private fun fmt(d: Double) = if (d % 1.0 == 0.0) d.toLong().toString() else Stri
 private fun timeStr(t: Long) = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.US).format(Date(t))
 private fun Fragment.store() = (requireActivity() as MainActivity).store
 
+/** شريط حالة الإرسال: يُحدَّث تلقائياً ويعرض ما هو معلّق في الطابور */
+private fun Context.syncBanner(st: Store): TextView {
+    val tv = TextView(this).apply { textSize = 13f; setPadding(dp(10), dp(6), dp(10), dp(6)) }
+    fun refresh() {
+        if (!st.configured()) { tv.visibility = View.GONE; return }
+        tv.visibility = View.VISIBLE
+        if (Syncer.disabled) {
+            tv.text = "⚠ الحساب معطّل — بياناتك محفوظة على الهاتف، راجع المدير"
+            tv.setTextColor(Color.parseColor("#C62828"))
+        } else if (st.dirty) {
+            val inv = st.pendingInvoices(); val del = st.pendingDeletions()
+            tv.text = "⏳ ${st.pendingChanges()} تعديل بانتظار الإرسال" +
+                (if (inv > 0) " — $inv فاتورة" else "") + (if (del > 0) " — $del تقرير حذف" else "") +
+                "\nمحفوظة على الهاتف وتُرسل تلقائياً عند توفر الإنترنت"
+            tv.setTextColor(Color.parseColor("#E65100"))
+        } else {
+            tv.text = "✓ كل البيانات مرسلة" + (if (st.lastSync > 0) " — آخر مزامنة ${timeStr(st.lastSync)}" else "")
+            tv.setTextColor(Color.parseColor("#2E7D32"))
+        }
+    }
+    val tick = object : Runnable { override fun run() { refresh(); tv.postDelayed(this, 2000) } }
+    tv.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+        override fun onViewAttachedToWindow(v: View) { tick.run() }
+        override fun onViewDetachedFromWindow(v: View) { v.removeCallbacks(tick) }
+    })
+    refresh()
+    return tv
+}
+
 private fun confirm(c: Context, msg: String, ok: () -> Unit) {
     AlertDialog.Builder(c).setMessage(msg)
         .setPositiveButton("حذف") { _, _ -> ok() }
@@ -66,50 +95,121 @@ private fun askReason(c: Context, title: String, ok: (String) -> Unit) {
     d.show()
 }
 
-// ---------- تبويب الرحلة ----------
+private fun dur(ms: Long): String {
+    val m = maxOf(0L, ms) / 60000
+    val h = m / 60
+    return if (h > 0) "$h س ${m % 60} د" else "$m د"
+}
+
+// ---------- تبويب الرحلة: بداية رحلة ← نقاط توقف (وصول/مغادرة) ← نهاية رحلة ----------
 class TripFragment : Fragment() {
     override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext(); val st = store()
-        val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        val summary = ctx.label("", 18f, true)
-        val name = ctx.input("اسم نقطة التوقف")
-        val odo = ctx.input("قراءة العداد (كم)", true)
+        val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        val root = ctx.page { addView(ctx.syncBanner(st)); addView(body) }
+        lateinit var render: () -> Unit
 
-        fun render() {
-            list.removeAllViews()
-            val pts = (0 until st.points.length()).map { st.points.getJSONObject(it) }.sortedBy { it.getLong("time") }
-            var total = 0.0
-            pts.forEachIndexed { idx, p ->
-                val seg = if (idx > 0) maxOf(0.0, p.getDouble("odo") - pts[idx - 1].getDouble("odo")) else 0.0
-                total += seg
-                val extra = if (idx > 0) "  (+${fmt(seg)} كم)" else ""
-                list.addView(ctx.label("${idx + 1}. ${p.getString("name")} — ${fmt(p.getDouble("odo"))}$extra\n${timeStr(p.getLong("time"))}", 15f).apply {
-                    setOnLongClickListener {
-                        askReason(ctx, "حذف النقطة: ${p.getString("name")}") { reason ->
-                            st.delPoint(p.getLong("id"), reason); render(); Syncer.auto(ctx, st)
-                        }
-                        true
+        fun mk(id: Long, n: String, o: Double, kind: String, tid: Long) =
+            JSONObject().put("id", id).put("name", n).put("odo", o).put("time", id).put("kind", kind).put("tripId", tid)
+        fun after() { st.save(); render(); Syncer.auto(ctx, st) }
+        fun allPts() = (0 until st.points.length()).map { st.points.getJSONObject(it) }.sortedBy { it.getLong("time") }
+
+        fun pointRow(idx: Int, p: JSONObject, prev: JSONObject?, tripActive: Boolean): TextView {
+            val seg = if (prev != null) maxOf(0.0, p.getDouble("odo") - prev.getDouble("odo")) else 0.0
+            val kind = p.optString("kind")
+            val icon = when (kind) { "start" -> "🟢 انطلاق"; "end" -> "🏁 نهاية"; "stop" -> "📍 توقف"; else -> "📍" }
+            val extra = if (prev != null) "  (+${fmt(seg)} كم)" else ""
+            val d = if (kind == "stop") {
+                val lv = p.optLong("leave")
+                if (lv > 0) "\n⏱ مدة التوقف: ${dur(lv - p.getLong("time"))}"
+                else if (tripActive) "\n⏱ متوقف حالياً منذ ${dur(System.currentTimeMillis() - p.getLong("time"))}" else ""
+            } else ""
+            return ctx.label("${idx + 1}. $icon — ${p.getString("name")} — ${fmt(p.getDouble("odo"))}$extra\n${timeStr(p.getLong("time"))}$d", 15f).apply {
+                setOnLongClickListener {
+                    askReason(ctx, "حذف النقطة: ${p.getString("name")}") { reason ->
+                        st.delPoint(p.getLong("id"), reason); render(); Syncer.auto(ctx, st)
                     }
-                })
+                    true
+                }
             }
-            summary.text = "المسافة: ${fmt(total)} كم   |   نقاط التوقف: ${pts.size}"
         }
 
-        val root = ctx.page {
-            addView(ctx.label("تسجيل نقطة توقف", 20f, true))
-            addView(name); addView(odo)
-            addView(ctx.btn("إضافة النقطة") {
-                val n = name.text.toString().trim(); val o = odo.text.toString().toDoubleOrNull()
-                if (n.isEmpty() || o == null) {
-                    Toast.makeText(ctx, "أدخل الاسم وقراءة العداد", Toast.LENGTH_SHORT).show()
-                } else {
-                    val now = System.currentTimeMillis()
-                    st.points.put(JSONObject().put("id", now).put("name", n).put("odo", o).put("time", now))
-                    st.save(); name.text.clear(); odo.text.clear(); render(); Syncer.auto(ctx, st)
+        render = {
+            body.removeAllViews()
+            val all = allPts()
+            val trip = st.activeTrip()
+            val name = ctx.input("اسم النقطة")
+            val odo = ctx.input("قراءة العداد (كم)", true)
+            val now = System.currentTimeMillis()
+
+            if (trip == null) {
+                body.addView(ctx.label("لا توجد رحلة جارية", 20f, true))
+                name.hint = "نقطة الانطلاق"
+                body.addView(name); body.addView(odo)
+                body.addView(ctx.btn("▶ بدء رحلة") {
+                    val n = name.text.toString().trim(); val o = odo.text.toString().toDoubleOrNull()
+                    if (n.isEmpty() || o == null) {
+                        Toast.makeText(ctx, "أدخل نقطة الانطلاق وقراءة العداد", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val t = System.currentTimeMillis()
+                        st.trips.put(JSONObject().put("id", t).put("startTime", t).put("startOdo", o).put("endTime", 0L).put("endOdo", 0.0))
+                        st.points.put(mk(t, n, o, "start", t)); after()
+                    }
+                })
+            } else {
+                val tid = trip.getLong("id")
+                val tp = all.filter { it.optLong("tripId") == tid }
+                val lastOdo = tp.lastOrNull()?.getDouble("odo") ?: trip.getDouble("startOdo")
+                val open = tp.lastOrNull { it.optString("kind") == "stop" && it.optLong("leave") == 0L }
+                body.addView(ctx.label("🚚 رحلة جارية", 20f, true))
+                body.addView(ctx.label("بدأت ${timeStr(trip.getLong("startTime"))} — مضى ${dur(now - trip.getLong("startTime"))}", 15f))
+                if (open != null) {
+                    body.addView(ctx.label("أنت متوقف الآن في «${open.getString("name")}» منذ ${dur(now - open.getLong("time"))}", 16f, true))
+                    body.addView(ctx.btn("➡ مغادرة النقطة") { open.put("leave", System.currentTimeMillis()); after() })
                 }
-            })
-            addView(summary); addView(list)
-            addView(ctx.label("(اضغط مطولاً على نقطة لحذفها: يلزم كتابة السبب ويُرسل تقرير للمدير)", 12f))
+                name.hint = "اسم نقطة التوقف (أو نقطة النهاية)"
+                body.addView(name); body.addView(odo)
+                fun check(): Pair<String, Double>? {
+                    val o = odo.text.toString().toDoubleOrNull()
+                    if (o == null) { Toast.makeText(ctx, "أدخل قراءة العداد", Toast.LENGTH_SHORT).show(); return null }
+                    if (o < lastOdo) { Toast.makeText(ctx, "القراءة أقل من السابقة (${fmt(lastOdo)})", Toast.LENGTH_SHORT).show(); return null }
+                    return Pair(name.text.toString().trim(), o)
+                }
+                body.addView(ctx.btn("📍 تسجيل نقطة توقف") {
+                    val r = check() ?: return@btn
+                    if (r.first.isEmpty()) { Toast.makeText(ctx, "أدخل اسم النقطة", Toast.LENGTH_SHORT).show(); return@btn }
+                    val t = System.currentTimeMillis()
+                    open?.put("leave", t)  // مغادرة النقطة السابقة تلقائياً
+                    st.points.put(mk(t + 1, r.first, r.second, "stop", tid)); after()
+                })
+                body.addView(ctx.btn("🏁 إنهاء الرحلة") {
+                    val r = check() ?: return@btn
+                    val t = System.currentTimeMillis()
+                    open?.put("leave", t)
+                    st.points.put(mk(t + 1, r.first.ifEmpty { "نهاية الرحلة" }, r.second, "end", tid))
+                    trip.put("endTime", t).put("endOdo", r.second); after()
+                })
+            }
+
+            // سجل الرحلات
+            val trips = (0 until st.trips.length()).map { st.trips.getJSONObject(it) }.sortedByDescending { it.getLong("startTime") }
+            for (t in trips) {
+                val tid = t.getLong("id"); val end = t.optLong("endTime"); val active = end == 0L
+                val tp = all.filter { it.optLong("tripId") == tid }
+                val stops = tp.filter { it.optString("kind") == "stop" }
+                val stopMs = stops.sumOf { (if (it.optLong("leave") > 0) it.getLong("leave") else if (active) now else it.getLong("time")) - it.getLong("time") }
+                val endOdo = if (!active) t.getDouble("endOdo") else (tp.lastOrNull()?.getDouble("odo") ?: t.getDouble("startOdo"))
+                body.addView(ctx.label("— رحلة ${timeStr(t.getLong("startTime"))} ${if (active) "(جارية)" else ""}", 17f, true).apply { setPadding(0, ctx.dp(16), 0, 0) })
+                body.addView(ctx.label("المدة: ${dur((if (active) now else end) - t.getLong("startTime"))}   |   المسافة: ${fmt(maxOf(0.0, endOdo - t.getDouble("startOdo")))} كم\nالتوقفات: ${stops.size}   |   مجموع وقت التوقف: ${dur(stopMs)}", 14f))
+                tp.forEachIndexed { idx, p -> body.addView(pointRow(idx, p, tp.getOrNull(idx - 1), active)) }
+            }
+            // نقاط قديمة بلا رحلة
+            val legacy = all.filter { it.optLong("tripId") == 0L }
+            if (legacy.isNotEmpty()) {
+                body.addView(ctx.label("— نقاط سابقة (بدون رحلة)", 17f, true).apply { setPadding(0, ctx.dp(16), 0, 0) })
+                legacy.forEachIndexed { idx, p -> body.addView(pointRow(idx, p, legacy.getOrNull(idx - 1), false)) }
+            }
+            body.addView(ctx.label("(اضغط مطولاً على نقطة لحذفها: يلزم كتابة السبب ويُرسل تقرير للمدير)", 12f))
         }
         render()
         return root
@@ -176,6 +276,7 @@ class InvoiceFragment : Fragment() {
         }
 
         val root = ctx.page {
+            addView(ctx.syncBanner(st))
             addView(ctx.label("فاتورة جديدة", 20f, true))
             addView(note); addView(amount)
             addView(ctx.btn("📷 تصوير الفاتورة") {
@@ -298,6 +399,7 @@ class SyncFragment : Fragment() {
         val status = ctx.label("", 15f)
         return ctx.page {
             addView(ctx.label("الحساب", 20f, true))
+            addView(ctx.syncBanner(st))
             val af = st.avatarFile()
             if (af.exists()) addView(ImageView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ctx.dp(96), ctx.dp(96))
@@ -330,7 +432,7 @@ class SyncFragment : Fragment() {
                     .setNegativeButton("إلغاء", null).show()
             })
             addView(status)
-            addView(ctx.label("تُرسل كل تعديلاتك تلقائياً عند توفر الإنترنت.", 13f))
+            addView(ctx.label("يعمل التطبيق بدون إنترنت: كل شيء يُحفظ على الهاتف ويُرسل تلقائياً (حتى لو كان التطبيق مغلقاً) عند توفر الاتصال.", 13f))
         }
     }
 }

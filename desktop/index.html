@@ -56,12 +56,16 @@ details.day{background:#fff;border-radius:8px;box-shadow:0 1px 3px #0002;margin:
 details.day summary{padding:10px 12px;cursor:pointer;font-weight:bold;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 details.day summary small{font-weight:normal;color:#555}
 details.day .bd{padding:0 12px 12px}
+.nw{border-right:6px solid #9e9e9e}.nw.n-mv{border-color:#2e7d32}.nw.n-sp{border-color:#ef6c00}.nw.n-wr{border-color:#c62828}.nw.n-dn{border-color:#1565c0}
+.nw .tl{font-size:13px;color:#444;margin-top:6px;line-height:1.7}
+.al{background:#fdecea;border-right:5px solid #c62828;border-radius:8px;padding:10px 14px;margin-bottom:14px}
 #ov{display:none;position:fixed;inset:0;background:#000c;align-items:center;justify-content:center}
 #ov img{max-height:92vh;max-width:92vw}
 </style></head><body>
 <header><b>🚚 متابعة المركبات</b><small id="st"></small></header>
 <nav>
-  <button data-t="cars" class="on">السائقون</button>
+  <button data-t="now" class="on">اليوم الآن</button>
+  <button data-t="cars">السائقون</button>
   <button data-t="stats">الإحصائيات</button>
   <button data-t="trips">الرحلات اليومية</button>
   <button data-t="mnt">الصيانة</button>
@@ -78,7 +82,7 @@ details.day .bd{padding:0 12px 12px}
 const ADMIN = 'admin@fleet.local';
 let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('cfg') || '{}'); } catch {}
 let D = [], sel = '', last = '', tok = null, tokExp = 0, flash = '';
-let tab = (cfg.api && cfg.db && localStorage.getItem('adm')) ? 'cars' : 'set';
+let tab = (cfg.api && cfg.db && localStorage.getItem('adm')) ? 'now' : 'set';
 const imgs = new Map();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -130,6 +134,19 @@ function stats(v) {
   const p = [...v.points].sort((a, b) => a.time - b.time); let t = 0;
   const rows = p.map((x, i) => { const s = i ? Math.max(0, x.odo - p[i - 1].odo) : 0; t += s; return { ...x, seg: s }; });
   return { rows, total: t };
+}
+const dur = ms => { const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} س ${m % 60} د` : `${m} د`; };
+const kindIc = r => r.kind === 'start' ? '🟢 انطلاق' : r.kind === 'end' ? '🏁 نهاية' : r.kind === 'stop' ? '📍 توقف' : '';
+const stopDur = r => r.kind === 'stop' ? (r.leave ? dur(r.leave - r.time) : 'لم يغادر بعد') : '';
+function tripsTbl(v) {
+  if (!(v.trips || []).length) return '';
+  return `<h3>الرحلات (${v.trips.length})</h3><table><tr><th>البداية</th><th>النهاية</th><th>مدة الرحلة</th><th>المسافة</th><th>التوقفات</th><th>مجموع وقت التوقف</th></tr>
+    ${[...v.trips].sort((a, b) => b.startTime - a.startTime).map(t => {
+      const ps = v.points.filter(p => p.tripId === t.id), stops = ps.filter(p => p.kind === 'stop'), end = t.endTime || 0;
+      const odo = end ? t.endOdo : Math.max(t.startOdo, ...ps.map(p => p.odo));
+      const stopMs = stops.reduce((a, p) => a + ((p.leave || end || Date.now()) - p.time), 0);
+      return `<tr><td>${when(t.startTime)}</td><td>${end ? when(end) : '<b>جارية</b>'}</td><td>${dur((end || Date.now()) - t.startTime)}</td><td>${fmt(odo - t.startOdo)} كم</td><td>${stops.length}</td><td>${dur(stopMs)}</td></tr>`;
+    }).join('')}</table>`;
 }
 async function loadImg(el) {
   const k = el.dataset.v + '/' + el.dataset.id;
@@ -474,8 +491,8 @@ function drawTrips(m) {
         ${keys.map((k, idx) => {
           const d = days[k], dist = d.pts.reduce((a, r) => a + r.seg, 0), ex = d.inv.reduce((a, i) => a + num(i.amount), 0);
           return `<details class="day" ${idx === 0 ? 'open' : ''}><summary><span>📅 ${dayLabel(k)}</span><small>🚗 ${fmt(dist)} كم</small><small>📍 ${d.pts.length} نقطة</small><small>🧾 ${d.inv.length} فاتورة${d.inv.length ? ' (' + money(ex) + ')' : ''}</small></summary>
-            <div class="bd">${d.pts.length ? `<table><tr><th>الوقت</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th></tr>
-              ${d.pts.map(r => `<tr><td>${hm(r.time)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${fmt(r.seg)} كم</td></tr>`).join('')}</table>` : '<small>لا توجد نقاط توقف</small>'}
+            <div class="bd">${d.pts.length ? `<table><tr><th>الوقت</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>النوع</th><th>مدة التوقف</th></tr>
+              ${d.pts.map(r => `<tr><td>${hm(r.time)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${fmt(r.seg)} كم</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>` : '<small>لا توجد نقاط توقف</small>'}
               ${d.inv.length ? `<table style="margin-top:8px"><tr><th>الوقت</th><th>الفاتورة</th><th>المبلغ</th></tr>
               ${d.inv.sort((a, b) => a.time - b.time).map(i => `<tr><td>${hm(i.time)}</td><td>${esc(i.note)}</td><td>${esc(i.amount)}</td></tr>`).join('')}</table>` : ''}</div></details>`;
         }).join('')}</div>`;
@@ -494,12 +511,76 @@ function drawTrips(m) {
   run();
 }
 
+// ---------- لوحة «اليوم الآن» ----------
+function nowInfo(v) {
+  const now = Date.now(), t0 = new Date().setHours(0, 0, 0, 0);
+  const trips = [...(v.trips || [])].sort((a, b) => a.startTime - b.startTime);
+  const act = trips.filter(t => !t.endTime).pop() || null;
+  const todays = trips.filter(t => t.startTime >= t0 || t.endTime >= t0 || !t.endTime);
+  const ids = new Set(todays.map(t => t.id));
+  const tp = v.points.filter(p => ids.has(p.tripId)).sort((a, b) => a.time - b.time);
+  let km = 0, stopMs = 0, stops = 0;
+  todays.forEach(t => {
+    const ps = v.points.filter(p => p.tripId === t.id);
+    km += (t.endTime ? t.endOdo : Math.max(t.startOdo, ...ps.map(p => p.odo))) - t.startOdo;
+    ps.filter(p => p.kind === 'stop').forEach(p => { stops++; stopMs += (p.leave || t.endTime || now) - p.time; });
+  });
+  const exp = v.invoices.filter(i => i.time >= t0).reduce((a, i) => a + num(i.amount), 0);
+  const open = act ? tp.filter(p => p.tripId === act.id && p.kind === 'stop' && !p.leave).pop() : null;
+  const lastP = act ? tp.filter(p => p.tripId === act.id).pop() : null;
+  let cls = 'nw', st, detail = '', rank, warns = [];
+  if (act) {
+    if (open) { cls += ' n-sp'; st = '⏸ متوقف'; detail = `في «${esc(open.name)}» منذ ${dur(now - open.time)}`; rank = 1;
+      if (now - open.time > 60 * 60000) { cls = 'nw n-wr'; rank = 0; warns.push(`${v.name} متوقف في «${open.name}» منذ ${dur(now - open.time)}`); } }
+    else { cls += ' n-mv'; st = '🚗 في الطريق'; rank = 2;
+      const from = lastP ? Math.max(lastP.time, lastP.leave || 0) : act.startTime;
+      detail = lastP ? `منذ ${dur(now - from)} من «${esc(lastP.name)}»` : ''; }
+    if (now - act.startTime > 12 * 3600000) { cls = 'nw n-wr'; rank = 0; warns.push(`${v.name}: رحلة مفتوحة منذ ${dur(now - act.startTime)} (ربما نسي الإنهاء)`); }
+    if (v.lastSync && now - v.lastSync > 3 * 3600000) warns.push(`${v.name}: آخر مزامنة منذ ${dur(now - v.lastSync)} (قد يكون بدون إنترنت)`);
+  } else if (todays.length) { cls += ' n-dn'; st = '✅ أنهى رحلته'; rank = 4;
+    detail = `انتهت ${hm(Math.max(...todays.map(t => t.endTime)))}`; }
+  else { st = '⚪ لم يبدأ اليوم'; rank = 3; }
+  return { v, act, todays, tp, km, stopMs, stops, exp, cls, st, detail, rank, warns };
+}
+function drawNow(m) {
+  const list = D.filter(v => v.active).map(nowInfo).sort((a, b) => a.rank - b.rank || a.v.name.localeCompare(b.v.name, 'ar'));
+  if (!list.length) { m.innerHTML = '<p>لا يوجد سائقون مفعّلون بعد.</p>'; return; }
+  const c = r => list.filter(x => x.rank === r).length, warns = list.flatMap(x => x.warns);
+  const inTrip = list.filter(x => x.act).length, stopped = list.filter(x => x.act && x.st.startsWith('⏸')).length;
+  m.innerHTML = `<h3 style="margin-top:0">📍 اليوم الآن — ${new Date().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' })}
+      <small style="color:#666">(يتحدّث تلقائياً)</small></h3>
+    ${warns.length ? `<div class="al"><b>⚠ تنبيهات (${warns.length})</b><br>${warns.map(w => '• ' + esc(w)).join('<br>')}</div>` : ''}
+    <div class="kpis">
+      <div class="kpi"><small>في رحلة الآن</small><div class="v">${inTrip}</div><small>منهم متوقفون: ${stopped}</small></div>
+      <div class="kpi"><small>لم يبدأوا اليوم</small><div class="v">${c(3)}</div></div>
+      <div class="kpi"><small>أنهوا رحلتهم</small><div class="v">${c(4)}</div></div>
+      <div class="kpi"><small>مسافة اليوم</small><div class="v">${fmt(list.reduce((a, x) => a + x.km, 0))} كم</div></div>
+      <div class="kpi"><small>وقت التوقف اليوم</small><div class="v">${dur(list.reduce((a, x) => a + x.stopMs, 0))}</div><small>${list.reduce((a, x) => a + x.stops, 0)} توقف</small></div>
+      <div class="kpi"><small>مصروفات اليوم</small><div class="v">${money(list.reduce((a, x) => a + x.exp, 0))}</div></div>
+    </div>
+    <div class="grid">${list.map(x => {
+      const rows = x.tp.slice(-6);
+      return `<div class="card click ${x.cls}" data-u="${esc(x.v.uid)}">
+        <h3>${av(x.v.uid)} ${esc(x.v.name)}</h3>
+        <div>🚗 ${esc(x.v.vehicle || 'بدون مركبة')}</div>
+        <div style="font-size:18px;font-weight:bold;margin:6px 0">${x.st}</div>
+        <div>${x.detail}</div>
+        ${x.todays.length ? `<div style="margin-top:6px">🛣 ${fmt(x.km)} كم — 📍 ${x.stops} توقف (${dur(x.stopMs)})${x.exp ? ` — 🧾 ${money(x.exp)}` : ''}</div>` : ''}
+        ${x.act ? `<div>بدأت الرحلة ${hm(x.act.startTime)} — مضى ${dur(Date.now() - x.act.startTime)}</div>` : ''}
+        ${rows.length ? `<div class="tl">${x.tp.length > rows.length ? '… ' : ''}${rows.map(p => `${hm(p.time)} ${kindIc(p)} ${esc(p.name)}${p.kind === 'stop' ? ` <small>(${p.leave ? dur(p.leave - p.time) : 'متوقف'})</small>` : ''}`).join('<br>')}</div>` : ''}
+        <small>آخر مزامنة: ${x.v.lastSync ? dur(Date.now() - x.v.lastSync) + ' مضت' : '-'}</small></div>`;
+    }).join('')}</div>`;
+  m.querySelectorAll('.card.click').forEach(c => c.onclick = () => { F.drv = c.dataset.u; sel = c.dataset.u; tab = 'det'; draw(); });
+}
+setInterval(() => { if (tab === 'now') draw(); }, 30000);
+
 // ---------- الرسم ----------
 function draw() {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   badges();
   const m = $('#m'); let h = '';
   if (tab === 'set') { drawSettings(m); return; }
+  if (tab === 'now') { drawNow(m); return; }
   if (tab === 'drv') { drawDrivers(m); return; }
   if (tab === 'stats') { drawStats(m); return; }
   if (tab === 'trips') { drawTrips(m); return; }
@@ -520,8 +601,8 @@ function draw() {
     const v = act.find(x => x.uid === sel), s = stats(v);
     h = `<select id="sel">${act.map(x => `<option value="${esc(x.uid)}" ${x.uid === sel ? 'selected' : ''}>${esc(x.name)} — ${esc(x.vehicle)}</option>`).join('')}</select>
       <h3>المسافة الكلية: ${fmt(s.total)} كم — نقاط التوقف: ${s.rows.length}</h3>
-      <table><tr><th>#</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th></tr>
-      ${s.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${i ? fmt(r.seg) + ' كم' : '-'}</td><td>${when(r.time)}</td></tr>`).join('')}</table>`;
+      <table><tr><th>#</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th><th>النوع</th><th>مدة التوقف</th></tr>
+      ${s.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${i ? fmt(r.seg) + ' كم' : '-'}</td><td>${when(r.time)}</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>${tripsTbl(v)}`;
   } else {
     const all = act.flatMap(v => v.invoices.map(i => ({ ...i, car: v.name, uid: v.uid }))).sort((a, b) => b.time - a.time);
     h = '<div class="grid">' + all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
@@ -629,7 +710,7 @@ async function poll(force) {
       D = Object.entries(dr || {}).map(([uid, d]) => {
         const x = (da || {})[uid] || {};
         return { uid, name: d.name || d.username, username: d.username, vehicle: d.vehicle || '', active: d.active === true,
-          lastSync: x.lastSync, photo: x.photoTime || 0, points: Object.values(x.points || {}), invoices: Object.values(x.invoices || {}) };
+          lastSync: x.lastSync, photo: x.photoTime || 0, points: Object.values(x.points || {}), trips: Object.values(x.trips || {}), invoices: Object.values(x.invoices || {}) };
       });
       if (tab !== 'set' && tab !== 'drv') draw();
     }

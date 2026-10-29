@@ -6,7 +6,13 @@ import org.json.JSONObject
 import java.io.File
 
 /** تخزين محلي دائم: ملف JSON + SharedPreferences */
-class Store(private val ctx: Context) {
+class Store private constructor(private val ctx: Context) {
+    companion object {
+        @Volatile private var inst: Store? = null
+        /** نسخة واحدة للتطبيق كله (الواجهة + العامل الخلفي) حتى لا تتعارض البيانات */
+        fun get(c: Context): Store = inst ?: synchronized(this) { inst ?: Store(c.applicationContext).also { inst = it } }
+    }
+
     private val file = File(ctx.filesDir, "data.json")
     private val prefs = ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
@@ -27,9 +33,21 @@ class Store(private val ctx: Context) {
         get() = prefs.getBoolean("pu", true)
         set(v) { prefs.edit().putBoolean("pu", v).apply() }
     fun avatarFile(): File = File(ctx.filesDir, "avatar.jpg")
-    var dirty: Boolean
-        get() = prefs.getBoolean("dirty", false)
-        set(v) { prefs.edit().putBoolean("dirty", v).apply() }
+    /** طابور الإرسال: rev يزيد مع كل تعديل، و syncedRev آخر رقم أُرسل بنجاح */
+    var rev: Long
+        get() = prefs.getLong("rev", 0L)
+        set(v) { prefs.edit().putLong("rev", v).apply() }
+    var syncedRev: Long
+        get() = prefs.getLong("srev", 0L)
+        set(v) { prefs.edit().putLong("srev", v).apply() }
+    var lastSync: Long
+        get() = prefs.getLong("lastSync", 0L)
+        set(v) { prefs.edit().putLong("lastSync", v).apply() }
+    @Synchronized fun touch() { rev = rev + 1 }
+    val dirty: Boolean get() = rev > syncedRev
+    fun pendingChanges(): Long = maxOf(0L, rev - syncedRev)
+    fun pendingInvoices(): Int = (0 until invoices.length()).count { !invoices.getJSONObject(it).optBoolean("up") }
+    fun pendingDeletions(): Int = (0 until deletions.length()).count { !deletions.getJSONObject(it).optBoolean("up") }
 
     private fun res(name: String): String {
         val id = ctx.resources.getIdentifier(name, "string", ctx.packageName)
@@ -46,20 +64,27 @@ class Store(private val ctx: Context) {
     var invoices = JSONArray()
     /** سجل حذف النقاط (سبب الحذف يُرسل للمدير) */
     var deletions = JSONArray()
+    /** الرحلات: id, startTime, startOdo, endTime (0 = جارية), endOdo */
+    var trips = JSONArray()
+    fun activeTrip(): JSONObject? =
+        (0 until trips.length()).map { trips.getJSONObject(it) }.lastOrNull { it.optLong("endTime") == 0L }
 
     init {
+        // ترحيل من الإصدار القديم: بيانات لم تُرسل بعد
+        if (prefs.getBoolean("dirty", false)) { prefs.edit().remove("dirty").apply(); touch() }
         try {
             if (file.exists()) {
                 val o = JSONObject(file.readText())
                 points = o.optJSONArray("points") ?: JSONArray()
                 invoices = o.optJSONArray("invoices") ?: JSONArray()
                 deletions = o.optJSONArray("deletions") ?: JSONArray()
+                trips = o.optJSONArray("trips") ?: JSONArray()
             }
         } catch (_: Exception) { }
     }
 
-    fun save() {
-        file.writeText(JSONObject().put("points", points).put("invoices", invoices).put("deletions", deletions).toString())
+    @Synchronized fun save() {
+        file.writeText(JSONObject().put("points", points).put("invoices", invoices).put("deletions", deletions).put("trips", trips).toString())
     }
 
     fun invDir(): File = File(ctx.filesDir, "invoices").apply { mkdirs() }
@@ -89,7 +114,7 @@ class Store(private val ctx: Context) {
     fun logout() {
         invDir().listFiles()?.forEach { it.delete() }
         avatarFile().delete()
-        points = JSONArray(); invoices = JSONArray(); deletions = JSONArray(); save()
+        points = JSONArray(); invoices = JSONArray(); deletions = JSONArray(); trips = JSONArray(); save()
         prefs.edit().clear().apply()
     }
 }
