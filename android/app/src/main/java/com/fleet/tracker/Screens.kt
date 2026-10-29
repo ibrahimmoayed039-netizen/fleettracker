@@ -3,6 +3,10 @@ package com.fleet.tracker
 import android.app.AlertDialog
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.StateListDrawable
 import android.media.ExifInterface
 import android.os.Bundle
 import android.text.InputType
@@ -21,22 +25,87 @@ import java.util.Date
 import java.util.Locale
 
 private fun Context.dp(n: Int) = (n * resources.displayMetrics.density).toInt()
+/** ألوان الهوية (Agrimatco - Fleet) */
+private object Brand {
+    val g1 = Color.parseColor("#1AC56D"); val g2 = Color.parseColor("#0A8F4B"); val g3 = Color.parseColor("#05643A")
+    val edge = Color.parseColor("#04512E"); val ink = Color.parseColor("#10241A")
+    val bg = Color.parseColor("#E9F0EC"); val line = Color.parseColor("#C3D3C9")
+}
+
+/** هوامش بالـ dp */
+private fun Context.lp(topDp: Int = 6, bottomDp: Int = 6) = LinearLayout.LayoutParams(
+    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+).apply { setMargins(0, dp(topDp), 0, dp(bottomDp)) }
+
+/** سطح مجسّم: وجه متدرّج فوق حافة داكنة، وعند الضغط ينزل الوجه (إحساس زر حقيقي) */
+private fun Context.raised(top: Int, bottom: Int, edge: Int, rDp: Int = 14, depthDp: Int = 4): Drawable {
+    val r = dp(rDp).toFloat(); val d = dp(depthDp)
+    fun layer(pressed: Boolean): LayerDrawable {
+        val base = GradientDrawable().apply { setColor(edge); cornerRadius = r }
+        val face = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)).apply { cornerRadius = r }
+        return LayerDrawable(arrayOf<Drawable>(base, face)).apply {
+            if (pressed) setLayerInset(1, 0, d - dp(1), 0, dp(1)) else setLayerInset(1, 0, 0, 0, d)
+        }
+    }
+    return StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_pressed), layer(true))
+        addState(intArrayOf(), layer(false))
+    }
+}
+
+/** قصّ الصورة بزوايا مدوّرة */
+private fun View.roundClip(rPx: Int) {
+    clipToOutline = true
+    outlineProvider = object : ViewOutlineProvider() {
+        override fun getOutline(v: View, o: Outline) { o.setRoundRect(0, 0, v.width, v.height, rPx.toFloat()) }
+    }
+}
+
 private fun Context.label(t: String, sz: Float = 16f, bold: Boolean = false) = TextView(this).apply {
     text = t; textSize = sz; setPadding(0, dp(6), 0, dp(6))
+    setTextColor(if (bold) Brand.g3 else Brand.ink)
     if (bold) setTypeface(null, Typeface.BOLD)
 }
 private fun Context.input(h: String, num: Boolean = false) = EditText(this).apply {
-    hint = h
+    hint = h; textSize = 16f
+    setHintTextColor(Color.parseColor("#7C8B83")); setTextColor(Brand.ink)
+    background = GradientDrawable().apply {
+        setColor(Color.parseColor("#FBFDFC")); cornerRadius = dp(12).toFloat(); setStroke(dp(1), Brand.line)
+    }
+    setPadding(dp(14), dp(12), dp(14), dp(12))
+    layoutParams = lp()
     if (num) inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
 }
-private fun Context.btn(t: String, f: () -> Unit) = Button(this).apply { text = t; setOnClickListener { f() } }
+private fun Context.btn(t: String, f: () -> Unit) = Button(this).apply {
+    text = t; setOnClickListener { f() }
+    transformationMethod = null
+    textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
+    setShadowLayer(2f, 0f, 1f, Color.parseColor("#66000000"))
+    background = raised(Brand.g1, Brand.g2, Brand.edge)
+    stateListAnimator = null
+    minHeight = dp(52); minimumHeight = dp(52)
+    setPadding(dp(16), dp(10), dp(16), dp(14))
+    layoutParams = lp(6, 6)
+}
+/** صفحة: خلفية فاتحة + بطاقة بيضاء مرتفعة (ظل حقيقي) تحوي المحتوى */
 private fun Context.page(body: LinearLayout.() -> Unit): ScrollView {
     val col = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(16), dp(16), dp(16))
+        background = GradientDrawable().apply {
+            setColor(Color.WHITE); cornerRadius = dp(20).toFloat(); setStroke(dp(1), Color.parseColor("#DCE6E0"))
+        }
+        elevation = dp(6).toFloat()
         body()
     }
-    return ScrollView(this).apply { addView(col) }
+    val holder = FrameLayout(this).apply {
+        setPadding(dp(14), dp(14), dp(14), dp(22))
+        addView(col, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+    return ScrollView(this).apply {
+        setBackgroundColor(Brand.bg); clipToPadding = false; clipChildren = false
+        addView(holder)
+    }
 }
 private fun fmt(d: Double) = if (d % 1.0 == 0.0) d.toLong().toString() else String.format(Locale.US, "%.1f", d)
 private fun timeStr(t: Long) = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.US).format(Date(t))
@@ -44,22 +113,23 @@ private fun Fragment.store() = (requireActivity() as MainActivity).store
 
 /** شريط حالة الإرسال: يُحدَّث تلقائياً ويعرض ما هو معلّق في الطابور */
 private fun Context.syncBanner(st: Store): TextView {
-    val tv = TextView(this).apply { textSize = 13f; setPadding(dp(10), dp(6), dp(10), dp(6)) }
+    val tv = TextView(this).apply { textSize = 13f; setPadding(dp(12), dp(8), dp(12), dp(8)); layoutParams = lp(0, 10) }
+    fun tint(c: String) { tv.background = GradientDrawable().apply { setColor(Color.parseColor(c)); cornerRadius = dp(12).toFloat() } }
     fun refresh() {
         if (!st.configured()) { tv.visibility = View.GONE; return }
         tv.visibility = View.VISIBLE
         if (Syncer.disabled) {
             tv.text = "⚠ الحساب معطّل — بياناتك محفوظة على الهاتف، راجع المدير"
-            tv.setTextColor(Color.parseColor("#C62828"))
+            tv.setTextColor(Color.parseColor("#C62828")); tint("#FDECEA")
         } else if (st.dirty) {
             val inv = st.pendingInvoices(); val del = st.pendingDeletions()
             tv.text = "⏳ ${st.pendingChanges()} تعديل بانتظار الإرسال" +
                 (if (inv > 0) " — $inv فاتورة" else "") + (if (del > 0) " — $del تقرير حذف" else "") +
                 "\nمحفوظة على الهاتف وتُرسل تلقائياً عند توفر الإنترنت"
-            tv.setTextColor(Color.parseColor("#E65100"))
+            tv.setTextColor(Color.parseColor("#E65100")); tint("#FFF3E0")
         } else {
             tv.text = "✓ كل البيانات مرسلة" + (if (st.lastSync > 0) " — آخر مزامنة ${timeStr(st.lastSync)}" else "")
-            tv.setTextColor(Color.parseColor("#2E7D32"))
+            tv.setTextColor(Color.parseColor("#2E7D32")); tint("#E6F5EC")
         }
     }
     val tick = object : Runnable { override fun run() { refresh(); tv.postDelayed(this, 2000) } }
@@ -77,28 +147,13 @@ private fun confirm(c: Context, msg: String, ok: () -> Unit) {
         .setNegativeButton("إلغاء", null).show()
 }
 
-/** حذف نقطة يتطلب سبباً إجبارياً، ويُرسل تقرير بالحذف للمدير */
-private fun askReason(c: Context, title: String, ok: (String) -> Unit) {
-    val et = EditText(c).apply { hint = "سبب الحذف (إجباري)"; minLines = 2 }
-    val box = FrameLayout(c).apply { setPadding(c.dp(20), c.dp(8), c.dp(20), 0); addView(et) }
-    val d = AlertDialog.Builder(c).setTitle(title)
-        .setMessage("سيُرسل تقرير بسبب الحذف إلى المدير.")
-        .setView(box)
-        .setPositiveButton("حذف وإرسال التقرير", null)
-        .setNegativeButton("إلغاء", null).create()
-    d.setOnShowListener {
-        d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            val r = et.text.toString().trim()
-            if (r.length < 3) et.error = "اكتب سبب الحذف" else { d.dismiss(); ok(r) }
-        }
-    }
-    d.show()
-}
-
-private fun dur(ms: Long): String {
-    val m = maxOf(0L, ms) / 60000
-    val h = m / 60
-    return if (h > 0) "$h س ${m % 60} د" else "$m د"
+/** تأكيد قراءة العداد قبل الحفظ: النقطة لا تُحذف ولا تُعدَّل بعد ذلك */
+private fun confirmSave(c: Context, odo: Double, prev: Double?, ok: () -> Unit) {
+    val diff = if (prev != null) "\nالمسافة منذ آخر قراءة: ${fmt(odo - prev)} كم" else ""
+    AlertDialog.Builder(c).setTitle("تأكيد قراءة العداد")
+        .setMessage("القراءة: ${fmt(odo)} كم$diff\n\nلا يمكن حذف النقطة. إن أخطأت يمكنك تصحيح العداد لاحقاً بسبب يصل للمدير، فتأكد من الرقم.")
+        .setPositiveButton("حفظ") { _, _ -> ok() }
+        .setNegativeButton("مراجعة", null).show()
 }
 
 // ---------- تبويب الرحلة: بداية رحلة ← نقاط توقف (وصول/مغادرة) ← نهاية رحلة ----------
@@ -114,6 +169,49 @@ class TripFragment : Fragment() {
         fun after() { st.save(); render(); Syncer.auto(ctx, st) }
         fun allPts() = (0 until st.points.length()).map { st.points.getJSONObject(it) }.sortedBy { it.getLong("time") }
 
+        /** تصحيح قراءة العداد فقط (لا حذف): ضمن حدود النقطة السابقة واللاحقة، مع سبب إجباري ويُسجَّل للمدير */
+        fun editOdo(p: JSONObject) {
+            val pts = allPts()
+            val idx = pts.indexOfFirst { it.getLong("id") == p.getLong("id") }
+            val lo: Double? = pts.getOrNull(idx - 1)?.getDouble("odo")
+            val hi: Double? = pts.getOrNull(idx + 1)?.getDouble("odo")
+            val oldV = p.getDouble("odo")
+            val et = ctx.input("قراءة العداد الصحيحة", true).apply { setText(fmt(oldV)) }
+            val rs = ctx.input("سبب التصحيح (إجباري)").apply { minLines = 2 }
+            val box = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL; setPadding(ctx.dp(20), ctx.dp(8), ctx.dp(20), 0)
+                addView(et); addView(rs)
+            }
+            val range = "من ${if (lo != null) fmt(lo) else "أي قيمة"} إلى ${if (hi != null) fmt(hi) else "أي قيمة"}"
+            val d = AlertDialog.Builder(ctx).setTitle("تصحيح العداد: ${p.getString("name")}")
+                .setMessage("القراءة الحالية: ${fmt(oldV)}\nالمسموح: $range\nيُرسل التصحيح للمدير مع السبب.")
+                .setView(box)
+                .setPositiveButton("حفظ التصحيح", null)
+                .setNegativeButton("إلغاء", null).create()
+            d.setOnShowListener {
+                d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val v = et.text.toString().toDoubleOrNull()
+                    val r = rs.text.toString().trim()
+                    if (v == null) { et.error = "أدخل رقماً"; return@setOnClickListener }
+                    if ((lo != null && v < lo) || (hi != null && v > hi)) { et.error = "يجب أن تكون $range"; return@setOnClickListener }
+                    if (v == oldV) { d.dismiss(); return@setOnClickListener }
+                    if (r.length < 3) { rs.error = "اكتب سبب التصحيح"; return@setOnClickListener }
+                    val log = p.optJSONArray("editLog") ?: JSONArray()
+                    log.put(JSONObject().put("from", oldV).put("to", v).put("time", System.currentTimeMillis()).put("reason", r))
+                    p.put("editLog", log).put("odo", v)
+                    // نقطة بداية/نهاية الرحلة: حدّث الرحلة أيضاً
+                    for (k in 0 until st.trips.length()) {
+                        val t = st.trips.getJSONObject(k)
+                        if (t.getLong("id") == p.optLong("tripId")) {
+                            when (p.optString("kind")) { "start" -> t.put("startOdo", v); "end" -> t.put("endOdo", v) }
+                        }
+                    }
+                    d.dismiss(); after()
+                }
+            }
+            d.show()
+        }
+
         fun pointRow(idx: Int, p: JSONObject, prev: JSONObject?, tripActive: Boolean): TextView {
             val seg = if (prev != null) maxOf(0.0, p.getDouble("odo") - prev.getDouble("odo")) else 0.0
             val kind = p.optString("kind")
@@ -124,14 +222,9 @@ class TripFragment : Fragment() {
                 if (lv > 0) "\n⏱ مدة التوقف: ${dur(lv - p.getLong("time"))}"
                 else if (tripActive) "\n⏱ متوقف حالياً منذ ${dur(System.currentTimeMillis() - p.getLong("time"))}" else ""
             } else ""
-            return ctx.label("${idx + 1}. $icon — ${p.getString("name")} — ${fmt(p.getDouble("odo"))}$extra\n${timeStr(p.getLong("time"))}$d", 15f).apply {
-                setOnLongClickListener {
-                    askReason(ctx, "حذف النقطة: ${p.getString("name")}") { reason ->
-                        st.delPoint(p.getLong("id"), reason); render(); Syncer.auto(ctx, st)
-                    }
-                    true
-                }
-            }
+            val ed = if (p.has("editLog")) " ✏" else ""
+            return ctx.label("${idx + 1}. $icon — ${p.getString("name")} — ${fmt(p.getDouble("odo"))}$ed$extra\n${timeStr(p.getLong("time"))}$d", 15f)
+                .apply { setOnClickListener { editOdo(p) } }
         }
 
         render = {
@@ -141,6 +234,17 @@ class TripFragment : Fragment() {
             val name = ctx.input("اسم النقطة")
             val odo = ctx.input("قراءة العداد (كم)", true)
             val now = System.currentTimeMillis()
+            // آخر قراءة عداد مسجّلة (من كل الرحلات): لا يُقبل رقم أقل منها
+            val lastOdoAll: Double? = all.lastOrNull()?.getDouble("odo")
+            if (lastOdoAll != null) odo.hint = "قراءة العداد (لا تقل عن ${fmt(lastOdoAll)})"
+            fun valid(o: Double?): Boolean {
+                if (o == null) { Toast.makeText(ctx, "أدخل قراءة العداد", Toast.LENGTH_SHORT).show(); return false }
+                if (lastOdoAll != null && o < lastOdoAll) {
+                    Toast.makeText(ctx, "القراءة (${fmt(o)}) أقل من آخر قراءة مسجّلة (${fmt(lastOdoAll)})", Toast.LENGTH_LONG).show()
+                    return false
+                }
+                return true
+            }
 
             if (trip == null) {
                 body.addView(ctx.label("لا توجد رحلة جارية", 20f, true))
@@ -150,16 +254,17 @@ class TripFragment : Fragment() {
                     val n = name.text.toString().trim(); val o = odo.text.toString().toDoubleOrNull()
                     if (n.isEmpty() || o == null) {
                         Toast.makeText(ctx, "أدخل نقطة الانطلاق وقراءة العداد", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val t = System.currentTimeMillis()
-                        st.trips.put(JSONObject().put("id", t).put("startTime", t).put("startOdo", o).put("endTime", 0L).put("endOdo", 0.0))
-                        st.points.put(mk(t, n, o, "start", t)); after()
+                    } else if (valid(o)) {
+                        confirmSave(ctx, o, lastOdoAll) {
+                            val t = System.currentTimeMillis()
+                            st.trips.put(JSONObject().put("id", t).put("startTime", t).put("startOdo", o).put("endTime", 0L).put("endOdo", 0.0))
+                            st.points.put(mk(t, n, o, "start", t)); after()
+                        }
                     }
                 })
             } else {
                 val tid = trip.getLong("id")
                 val tp = all.filter { it.optLong("tripId") == tid }
-                val lastOdo = tp.lastOrNull()?.getDouble("odo") ?: trip.getDouble("startOdo")
                 val open = tp.lastOrNull { it.optString("kind") == "stop" && it.optLong("leave") == 0L }
                 body.addView(ctx.label("🚚 رحلة جارية", 20f, true))
                 body.addView(ctx.label("بدأت ${timeStr(trip.getLong("startTime"))} — مضى ${dur(now - trip.getLong("startTime"))}", 15f))
@@ -171,23 +276,26 @@ class TripFragment : Fragment() {
                 body.addView(name); body.addView(odo)
                 fun check(): Pair<String, Double>? {
                     val o = odo.text.toString().toDoubleOrNull()
-                    if (o == null) { Toast.makeText(ctx, "أدخل قراءة العداد", Toast.LENGTH_SHORT).show(); return null }
-                    if (o < lastOdo) { Toast.makeText(ctx, "القراءة أقل من السابقة (${fmt(lastOdo)})", Toast.LENGTH_SHORT).show(); return null }
-                    return Pair(name.text.toString().trim(), o)
+                    if (!valid(o)) return null
+                    return Pair(name.text.toString().trim(), o!!)
                 }
                 body.addView(ctx.btn("📍 تسجيل نقطة توقف") {
                     val r = check() ?: return@btn
                     if (r.first.isEmpty()) { Toast.makeText(ctx, "أدخل اسم النقطة", Toast.LENGTH_SHORT).show(); return@btn }
-                    val t = System.currentTimeMillis()
-                    open?.put("leave", t)  // مغادرة النقطة السابقة تلقائياً
-                    st.points.put(mk(t + 1, r.first, r.second, "stop", tid)); after()
+                    confirmSave(ctx, r.second, lastOdoAll) {
+                        val t = System.currentTimeMillis()
+                        open?.put("leave", t)  // مغادرة النقطة السابقة تلقائياً
+                        st.points.put(mk(t + 1, r.first, r.second, "stop", tid)); after()
+                    }
                 })
                 body.addView(ctx.btn("🏁 إنهاء الرحلة") {
                     val r = check() ?: return@btn
-                    val t = System.currentTimeMillis()
-                    open?.put("leave", t)
-                    st.points.put(mk(t + 1, r.first.ifEmpty { "نهاية الرحلة" }, r.second, "end", tid))
-                    trip.put("endTime", t).put("endOdo", r.second); after()
+                    confirmSave(ctx, r.second, lastOdoAll) {
+                        val t = System.currentTimeMillis()
+                        open?.put("leave", t)
+                        st.points.put(mk(t + 1, r.first.ifEmpty { "نهاية الرحلة" }, r.second, "end", tid))
+                        trip.put("endTime", t).put("endOdo", r.second); after()
+                    }
                 })
             }
 
@@ -209,7 +317,7 @@ class TripFragment : Fragment() {
                 body.addView(ctx.label("— نقاط سابقة (بدون رحلة)", 17f, true).apply { setPadding(0, ctx.dp(16), 0, 0) })
                 legacy.forEachIndexed { idx, p -> body.addView(pointRow(idx, p, legacy.getOrNull(idx - 1), false)) }
             }
-            body.addView(ctx.label("(اضغط مطولاً على نقطة لحذفها: يلزم كتابة السبب ويُرسل تقرير للمدير)", 12f))
+            body.addView(ctx.label("النقاط لا تُحذف. لتصحيح خطأ في العداد اضغط على النقطة (✏ = نقطة مصحّحة، والتصحيح يصل للمدير مع السبب). العداد لا يقل عن القراءة السابقة.", 12f))
         }
         render()
         return root
@@ -255,10 +363,14 @@ class InvoiceFragment : Fragment() {
             list.removeAllViews()
             for (k in (0 until st.invoices.length()).reversed()) {
                 val inv = st.invoices.getJSONObject(k)
-                val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, ctx.dp(8), 0, ctx.dp(8)) }
+                val row = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL; setPadding(ctx.dp(10), ctx.dp(10), ctx.dp(10), ctx.dp(10))
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#F4F9F6")); cornerRadius = ctx.dp(14).toFloat(); setStroke(ctx.dp(1), Color.parseColor("#DCE6E0")) }
+                    layoutParams = ctx.lp(4, 6)
+                }
                 val img = ImageView(ctx).apply {
                     layoutParams = LinearLayout.LayoutParams(ctx.dp(80), ctx.dp(80))
-                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    scaleType = ImageView.ScaleType.CENTER_CROP; roundClip(context.dp(14))
                     val p = File(st.invDir(), inv.getString("file")).path
                     setImageBitmap(BitmapFactory.decodeFile(p, BitmapFactory.Options().apply { inSampleSize = 8 }))
                 }
@@ -291,6 +403,95 @@ class InvoiceFragment : Fragment() {
     }
 }
 
+/** تصغير الصورة إلى مربع 256 بكسل وحفظها كصورة للسائق (تُرفع عند المزامنة) */
+private fun saveAvatar(st: Store, src: File): Boolean {
+    val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(src.path, b)
+    var s = 1
+    while (minOf(b.outWidth, b.outHeight) / (s * 2) >= 256) s *= 2
+    var bm = BitmapFactory.decodeFile(src.path, BitmapFactory.Options().apply { inSampleSize = s }) ?: return false
+    val deg = when (ExifInterface(src.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1)) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+        ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+        ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+        else -> 0f
+    }
+    if (deg != 0f) bm = Bitmap.createBitmap(bm, 0, 0, bm.width, bm.height, Matrix().apply { postRotate(deg) }, true)
+    val side = minOf(bm.width, bm.height)
+    bm = Bitmap.createBitmap(bm, (bm.width - side) / 2, (bm.height - side) / 2, side, side)
+    bm = Bitmap.createScaledBitmap(bm, 256, 256, true)
+    st.avatarFile().outputStream().use { bm.compress(Bitmap.CompressFormat.JPEG, 80, it) }
+    src.delete()
+    st.photoTime = System.currentTimeMillis(); st.photoUp = false
+    return true
+}
+
+// ---------- بيانات السائق والمركبة (إجبارية عند أول دخول) ----------
+class ProfileFragment : Fragment() {
+    private var tmp: File? = null
+    private var preview: ImageView? = null
+    private val cam = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) tmp?.let { got(it) } }
+    private val gal = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val f = File(store().invDir(), "avatar_tmp.jpg")
+            requireContext().contentResolver.openInputStream(uri)?.use { inp -> f.outputStream().use { inp.copyTo(it) } }
+            got(f)
+        }
+    }
+
+    private fun got(f: File) {
+        val st = store()
+        if (saveAvatar(st, f)) preview?.apply {
+            setImageBitmap(BitmapFactory.decodeFile(st.avatarFile().path)); visibility = View.VISIBLE
+        }
+    }
+
+    override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
+        val ctx = requireContext(); val st = store()
+        val ed = LinkedHashMap<String, EditText>()
+        fun field(key: String, hint: String, phone: Boolean = false) {
+            ed[key] = ctx.input(hint).apply {
+                inputType = if (phone) InputType.TYPE_CLASS_PHONE else InputType.TYPE_CLASS_TEXT
+                setText(st.prof(key).ifEmpty { if (key == "name") st.driverName else "" })
+            }
+        }
+        field("name", "الاسم الكامل")
+        field("phone", "رقم الهاتف", true)
+        field("carType", "نوع السيارة (مثال: تويوتا هايلكس)")
+        field("model", "الموديل (سنة الصنع)")
+        field("color", "لون السيارة")
+        field("plate", "رقم المركبة (اللوحة)")
+        field("vin", "رقم الشاصي")
+        preview = ImageView(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(ctx.dp(120), ctx.dp(120))
+            scaleType = ImageView.ScaleType.CENTER_CROP; roundClip(context.dp(14))
+            if (st.avatarFile().exists()) setImageBitmap(BitmapFactory.decodeFile(st.avatarFile().path)) else visibility = View.GONE
+        }
+        return ctx.page {
+            addView(ctx.label("بيانات السائق والمركبة", 20f, true))
+            if (!st.profileDone()) addView(ctx.label("أكمل البيانات التالية للمتابعة (إجباري)", 14f))
+            ed.values.forEach { addView(it) }
+            addView(ctx.label("الصورة الشخصية", 16f, true))
+            addView(preview)
+            addView(ctx.btn("📷 التقاط صورتي") {
+                val f = File(st.invDir(), "avatar_tmp.jpg"); tmp = f
+                cam.launch(FileProvider.getUriForFile(ctx, "com.fleet.tracker.provider", f))
+            })
+            addView(ctx.btn("🖼 اختيار صورتي من المعرض") { gal.launch("image/*") })
+            addView(ctx.btn("حفظ ومتابعة") {
+                for ((_, e) in ed) if (e.text.isBlank()) { e.error = "مطلوب"; e.requestFocus(); return@btn }
+                if (!st.avatarFile().exists()) {
+                    Toast.makeText(ctx, "التقط صورتك الشخصية أو اخترها", Toast.LENGTH_LONG).show(); return@btn
+                }
+                ed.forEach { (k, e) -> st.setProf(k, e.text.toString().trim()) }
+                Syncer.auto(ctx, st)
+                Toast.makeText(ctx, "تم حفظ البيانات ✓", Toast.LENGTH_SHORT).show()
+                (requireActivity() as MainActivity).afterProfile()
+            })
+        }
+    }
+}
+
 // ---------- تبويب الحساب والمزامنة ----------
 class SyncFragment : Fragment() {
     private var tmp: File? = null
@@ -305,27 +506,9 @@ class SyncFragment : Fragment() {
         }
     }
 
-    /** تصغير الصورة إلى مربع 256 بكسل وحفظها كصورة للسائق ثم مزامنتها */
     private fun setAvatar(src: File) {
         val st = store()
-        val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(src.path, b)
-        var s = 1
-        while (minOf(b.outWidth, b.outHeight) / (s * 2) >= 256) s *= 2
-        var bm = BitmapFactory.decodeFile(src.path, BitmapFactory.Options().apply { inSampleSize = s }) ?: return
-        val deg = when (ExifInterface(src.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1)) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-            else -> 0f
-        }
-        if (deg != 0f) bm = Bitmap.createBitmap(bm, 0, 0, bm.width, bm.height, Matrix().apply { postRotate(deg) }, true)
-        val side = minOf(bm.width, bm.height)
-        bm = Bitmap.createBitmap(bm, (bm.width - side) / 2, (bm.height - side) / 2, side, side)
-        bm = Bitmap.createScaledBitmap(bm, 256, 256, true)
-        st.avatarFile().outputStream().use { bm.compress(Bitmap.CompressFormat.JPEG, 80, it) }
-        src.delete()
-        st.photoTime = System.currentTimeMillis(); st.photoUp = false
+        if (!saveAvatar(st, src)) return
         Syncer.auto(requireContext(), st)
         reload()
     }
@@ -381,6 +564,17 @@ class SyncFragment : Fragment() {
                 st.apiKey = api; st.dbUrl = db; st.uid = uid
                 st.refreshToken = r.getString("refreshToken")
                 st.username = user.trim(); st.driverName = d.optString("name"); st.vehicle = d.optString("vehicle")
+                // استرجاع بيانات السائق وصورته إن كان قد أدخلها سابقاً (مثلاً بعد تسجيل الخروج)
+                try {
+                    val tok = r.getString("idToken")
+                    val pr = Cloud.call("GET", "$db/data/$uid/profile.json?auth=$tok", null).trim()
+                    if (pr != "null") { val j = JSONObject(pr); st.profileKeys.forEach { k -> st.setProf(k, j.optString(k)) } }
+                    val avr = Cloud.call("GET", "$db/avatars/$uid.json?auth=$tok", null).trim()
+                    if (avr != "null" && !st.avatarFile().exists()) {
+                        st.avatarFile().writeBytes(Base64.decode(org.json.JSONTokener(avr).nextValue() as String, Base64.DEFAULT))
+                        st.photoUp = true; st.photoTime = System.currentTimeMillis()
+                    }
+                } catch (_: Exception) { }
             } catch (e: Exception) {
                 val m = e.message ?: ""
                 err = when {
@@ -390,7 +584,10 @@ class SyncFragment : Fragment() {
                 }
             }
             activity?.runOnUiThread {
-                if (err == null) { Syncer.run(st); reload() } else status.text = err
+                if (err == null) {
+                    Syncer.run(st)
+                    if (st.profileDone()) reload() else (activity as? MainActivity)?.show(ProfileFragment())
+                } else status.text = err
             }
         }.start()
     }
@@ -403,7 +600,7 @@ class SyncFragment : Fragment() {
             val af = st.avatarFile()
             if (af.exists()) addView(ImageView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ctx.dp(96), ctx.dp(96))
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = ImageView.ScaleType.CENTER_CROP; roundClip(context.dp(14))
                 setImageBitmap(BitmapFactory.decodeFile(af.path))
             })
             addView(ctx.btn("📷 التقاط صورتي") {
@@ -411,6 +608,7 @@ class SyncFragment : Fragment() {
                 cam.launch(FileProvider.getUriForFile(ctx, "com.fleet.tracker.provider", f))
             })
             addView(ctx.btn("🖼 اختيار صورتي من المعرض") { gal.launch("image/*") })
+            addView(ctx.btn("✏ بيانات السائق والمركبة") { (activity as? MainActivity)?.show(ProfileFragment()) })
             addView(ctx.label("السائق: ${st.driverName}", 17f))
             addView(ctx.label("المركبة: ${st.vehicle.ifEmpty { "غير محددة" }}", 17f))
             addView(ctx.label("اسم المستخدم: ${st.username}", 15f))

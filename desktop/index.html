@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>متابعة المركبات</title>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>Agrimatco - Fleet</title>
 <style>
 body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;background:#f4f6f8;color:#222}
-header{background:#1565c0;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+header{background:#0a8f4b;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
 nav{display:flex;background:#fff;border-bottom:1px solid #ddd}
 nav button{flex:1;padding:12px;border:0;background:none;font-size:16px;cursor:pointer}
-nav button.on{border-bottom:3px solid #1565c0;color:#1565c0;font-weight:bold}
+nav button.on{border-bottom:3px solid #0a8f4b;color:#0a8f4b;font-weight:bold}
 main{padding:20px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
 .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px #0002;margin-bottom:14px}
 .grid .card{margin:0}
 .card.click{cursor:pointer}
-.big{font-size:26px;font-weight:bold;color:#1565c0}
+.big{font-size:26px;font-weight:bold;color:#0a8f4b}
 table{width:100%;border-collapse:collapse;background:#fff}
 td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 th{background:#eef2f7}
@@ -19,23 +19,23 @@ input{padding:8px;font-size:15px;margin-bottom:10px;width:100%;box-sizing:border
 td input{margin:0}
 select{padding:8px;font-size:15px;margin-bottom:12px}
 .form{max-width:560px}
-button.p{padding:8px 16px;font-size:14px;background:#1565c0;color:#fff;border:0;border-radius:6px;cursor:pointer;margin-left:6px}
+button.p{padding:8px 16px;font-size:14px;background:#0a8f4b;color:#fff;border:0;border-radius:6px;cursor:pointer;margin-left:6px}
 button.r{background:#c62828}
 .msg{margin:8px 0;color:#c62828}.ok{color:#2e7d32}
 .off{opacity:.5}
 img{max-width:100%;border-radius:6px;cursor:pointer;min-height:60px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
 .kpi{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px #0002}
-.kpi small{color:#666}.kpi .v{font-size:22px;font-weight:bold;color:#1565c0}
+.kpi small{color:#666}.kpi .v{font-size:22px;font-weight:bold;color:#0a8f4b}
 .up{color:#c62828}.dn{color:#2e7d32}.eq{color:#666}
 .hb{display:flex;align-items:center;gap:8px;margin:6px 0}
 .hb .l{width:110px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hb .t{flex:1;background:#eef2f7;border-radius:6px;height:22px;overflow:hidden}
-.hb .f{height:100%;background:#1565c0;border-radius:6px;min-width:2px}
+.hb .f{height:100%;background:#0a8f4b;border-radius:6px;min-width:2px}
 .hb .n{width:90px;font-size:13px;color:#444}
 .cols{display:flex;align-items:flex-end;gap:10px;height:190px;padding-top:20px}
 .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-.col .b{width:70%;max-width:46px;background:#1565c0;border-radius:6px 6px 0 0;min-height:2px}
+.col .b{width:70%;max-width:46px;background:#0a8f4b;border-radius:6px 6px 0 0;min-height:2px}
 .col .b.cur{background:#f9a825}
 .col .n{font-size:12px;color:#333;margin-bottom:3px}
 .col .m{font-size:12px;color:#666;margin-top:4px}
@@ -43,7 +43,7 @@ img{max-width:100%;border-radius:6px;cursor:pointer;min-height:60px}
 .bar select{margin:0}
 @media print{header,nav,.noprint{display:none!important}body{background:#fff}main{padding:0}.card{box-shadow:none;border:1px solid #ccc}}
 .bar input{margin:0;width:auto}
-.chip{display:inline-block;background:#e3f2fd;color:#0d47a1;border-radius:14px;padding:3px 10px;margin:3px;font-size:13px}
+.chip{display:inline-block;background:#e3f6ea;color:#05643a;border-radius:14px;padding:3px 10px;margin:3px;font-size:13px}
 .pg{background:#eef2f7;border-radius:6px;height:12px;overflow:hidden;margin:6px 0}
 .pg div{height:100%;border-radius:6px}
 .st-ok{color:#2e7d32}.st-soon{color:#ef6c00}.st-late{color:#c62828}
@@ -56,27 +56,110 @@ details.day{background:#fff;border-radius:8px;box-shadow:0 1px 3px #0002;margin:
 details.day summary{padding:10px 12px;cursor:pointer;font-weight:bold;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 details.day summary small{font-weight:normal;color:#555}
 details.day .bd{padding:0 12px 12px}
-.nw{border-right:6px solid #9e9e9e}.nw.n-mv{border-color:#2e7d32}.nw.n-sp{border-color:#ef6c00}.nw.n-wr{border-color:#c62828}.nw.n-dn{border-color:#1565c0}
+.nw{border-right:6px solid #9e9e9e}.nw.n-mv{border-color:#2e7d32}.nw.n-sp{border-color:#ef6c00}.nw.n-wr{border-color:#c62828}.nw.n-dn{border-color:#0a8f4b}
 .nw .tl{font-size:13px;color:#444;margin-top:6px;line-height:1.7}
 .al{background:#fdecea;border-right:5px solid #c62828;border-radius:8px;padding:10px 14px;margin-bottom:14px}
 #ov{display:none;position:fixed;inset:0;background:#000c;align-items:center;justify-content:center}
 #ov img{max-height:92vh;max-width:92vw}
+
+/* ===== Agrimatco - Fleet : تصميم احترافي مجسّم ===== */
+:root{--g1:#17b865;--g2:#0a8f4b;--g3:#05643a;--ink:#10241a}
+body{font-family:'Segoe UI',Tahoma,sans-serif;color:var(--ink);min-height:100vh;
+  background:radial-gradient(1100px 480px at 85% -8%,#d3f0df 0,transparent 62%),linear-gradient(180deg,#eef3f0,#e2eae5);background-attachment:fixed}
+header.top{background:linear-gradient(135deg,#0a3a22 0%,#05643a 48%,#0a8f4b 100%);padding:10px 24px;position:relative;z-index:5;
+  box-shadow:0 8px 20px #05301c66,inset 0 1px 0 #ffffff40,inset 0 -3px 0 #00000026}
+.brand{display:flex;align-items:center;gap:16px}
+.brand h1{margin:0;font-size:24px;letter-spacing:.6px;direction:ltr;text-align:left;text-shadow:0 2px 3px #0007}
+.brand small{display:block;opacity:.88;font-size:12px;margin-top:2px}
+.logo3d{width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff,#e9efeb);padding:4px;
+  box-shadow:0 8px 16px #0008,0 0 0 3px #ffffff59,inset 0 -5px 9px #0003;transform:perspective(320px) rotateY(-14deg);transition:transform .45s}
+.logo3d:hover{transform:perspective(320px) rotateY(14deg) scale(1.07)}
+.logo3d img{width:100%;height:100%;min-height:0;border-radius:50%;cursor:default;display:block}
+header.top #st{background:#00000030;border-radius:20px;padding:4px 14px;box-shadow:inset 0 2px 4px #0005}
+nav{gap:7px;padding:10px 12px 8px;border:0;background:linear-gradient(#ffffff,#eef3f0);box-shadow:0 6px 14px -4px #0a3d2455;position:relative;z-index:4}
+nav button{border:0;border-radius:11px;color:#2c3e34;font-weight:600;background:linear-gradient(#fff,#e9efeb);
+  box-shadow:0 3px 0 #c5d3ca,0 6px 9px #0a3d2422,inset 0 1px 0 #fff;transition:transform .12s,box-shadow .12s;margin-bottom:3px}
+nav button:hover{transform:translateY(-2px);box-shadow:0 5px 0 #c5d3ca,0 10px 14px #0a3d2430,inset 0 1px 0 #fff}
+nav button:active{transform:translateY(2px);box-shadow:0 1px 0 #c5d3ca}
+nav button.on{border:0;color:#fff;background:linear-gradient(#1ac56d,#0a8f4b 55%,#07743c);
+  box-shadow:0 3px 0 #05643a,0 8px 14px #0a8f4b66,inset 0 1px 0 #ffffff66;text-shadow:0 1px 2px #0005}
+main{padding:22px}
+.card{border-radius:15px;border:1px solid #ffffffb0;background:linear-gradient(180deg,#fff,#f6faf8);
+  box-shadow:0 1px 0 #fff inset,0 2px 4px #0a3d2414,0 14px 26px -12px #0a3d2466;transition:transform .2s,box-shadow .2s}
+.grid .card:hover,.card.click:hover{transform:translateY(-4px);box-shadow:0 1px 0 #fff inset,0 3px 6px #0a3d2420,0 22px 32px -12px #0a3d2477}
+.card h2,.card h3{color:var(--g3)}
+.big{color:var(--g2);text-shadow:0 1px 0 #fff}
+.kpi{border-radius:15px;background:linear-gradient(150deg,#fff,#e8f5ee);border-bottom:4px solid var(--g2);
+  box-shadow:0 1px 0 #fff inset,0 2px 0 #cfe3d7,0 12px 20px -8px #0a3d2466}
+.kpi .v{color:var(--g3);text-shadow:0 1px 0 #fff}
+button.p{background:linear-gradient(#1ac56d,#0a8f4b 60%,#07743c);border-radius:10px;font-weight:600;padding:9px 18px;margin-bottom:5px;
+  text-shadow:0 1px 2px #0004;position:relative;top:0;box-shadow:0 4px 0 #05643a,0 9px 14px #0a3d2440,inset 0 1px 0 #ffffff66;transition:top .08s,box-shadow .08s,filter .15s}
+button.p:hover{filter:brightness(1.08)}
+button.p:active{top:3px;box-shadow:0 1px 0 #05643a,0 3px 5px #0a3d2440}
+button.p.r{background:linear-gradient(#ee4a47,#c62828 60%,#a91d1d);box-shadow:0 4px 0 #861616,0 9px 14px #5a0e0e40,inset 0 1px 0 #ffffff55}
+button.p.r:active{box-shadow:0 1px 0 #861616}
+input,select,textarea{border:1px solid #c3d3c9;border-radius:10px;background:#fbfdfc;box-shadow:inset 0 2px 5px #0a3d2420;outline:0;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--g2);box-shadow:inset 0 2px 5px #0a3d2420,0 0 0 3px #0a8f4b33}
+table{border-radius:12px;overflow:hidden;box-shadow:0 2px 0 #fff inset,0 8px 18px -8px #0a3d2455}
+th{background:linear-gradient(#ecf7f1,#d6ebdf);color:var(--g3);border-bottom:2px solid #0a8f4b55}
+tbody tr:hover td,tr:hover>td{background:#f2faf6}
+.hb .t{box-shadow:inset 0 2px 4px #0a3d2428;background:#e3ece7}
+.hb .f{background:linear-gradient(180deg,#34d684,#0a8f4b 55%,#05643a);box-shadow:inset 0 2px 0 #ffffff59,0 2px 4px #0a3d2440}
+.col .b{background:linear-gradient(90deg,#05643a,#1ec772 42%,#0a8f4b 62%,#05643a);box-shadow:4px 0 8px #0a3d2440,inset 0 3px 0 #ffffff66}
+.col .b.cur{background:linear-gradient(90deg,#b37000,#ffcd4d 42%,#f9a825 62%,#b37000)}
+.chip{box-shadow:0 2px 0 #bfe4cd;font-weight:600}
+.av{box-shadow:0 3px 6px #0004,0 0 0 2px #fff}
+details.day{box-shadow:0 2px 0 #fff inset,0 8px 16px -8px #0a3d2455}
+.nw{box-shadow:0 8px 16px -8px #0a3d2455}
+.al{box-shadow:0 8px 16px -8px #c6282866}
+.phead,.pfoot,.pmark{display:none}
+@media print{
+  @page{size:A4;margin:12mm 10mm 12mm}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff;min-height:0}
+  header.top,nav{display:none!important}
+  .pwrap{display:table;width:100%}
+  .pth{display:table-header-group}.ptb{display:table-row-group}.ptf{display:table-footer-group}
+  .phead{display:flex;height:20mm;align-items:center;gap:12px;border-bottom:3px solid #0a8f4b;padding-bottom:3px;margin-bottom:5mm;background:#fff}
+  .phead img{width:18mm;height:18mm;min-height:0;border-radius:0}
+  .phead b{font-size:21px;direction:ltr;color:#05643a;letter-spacing:.5px}
+  .phead small{margin-right:auto;color:#555;font-size:12px}
+  .pfoot{display:block;text-align:center;font-size:11px;color:#666;border-top:1px solid #bbb;padding-top:3px;margin-top:5mm}
+  .pmark{display:block;position:fixed;top:50%;left:50%;width:120mm;height:120mm;margin:-60mm 0 0 -60mm;opacity:.06;z-index:-1}
+  .pmark img{width:100%;min-height:0;border-radius:0}
+  .card,.kpi{background:#fff;box-shadow:none;border:1px solid #ccc;transform:none}
+  table{box-shadow:none;overflow:visible}
+  tr{break-inside:avoid}
+  thead{display:table-header-group}
+}
+body.pdfmode .pth,body.pdfmode .ptf{display:none!important}
 </style></head><body>
-<header><b>🚚 متابعة المركبات</b><small id="st"></small></header>
+<div class="pmark"><img src="assets/logo.png" alt=""></div>
+<header class="top">
+  <div class="brand">
+    <div class="logo3d"><img src="assets/logo.png" alt="Agrimatco"></div>
+    <div><h1>Agrimatco - Fleet</h1><small>نظام متابعة المركبات والسائقين</small></div>
+  </div>
+  <small id="st"></small>
+</header>
 <nav>
   <button data-t="now" class="on">اليوم الآن</button>
   <button data-t="cars">السائقون</button>
   <button data-t="stats">الإحصائيات</button>
   <button data-t="trips">الرحلات اليومية</button>
   <button data-t="mnt">الصيانة</button>
-  <button data-t="del">سجل الحذف</button>
+  <button data-t="del">الحذف والتصحيح</button>
   <button data-t="rep">التقارير</button>
   <button data-t="det">التفاصيل</button>
   <button data-t="inv">الفواتير</button>
   <button data-t="drv">إدارة السائقين</button>
   <button data-t="set">الإعدادات</button>
 </nav>
-<main id="m"></main>
+<div class="pwrap">
+<div class="pth"><div class="phead"><img src="assets/logo.png" alt=""><b>Agrimatco - Fleet</b><small>نظام متابعة المركبات — <span id="pdate"></span></small></div></div>
+<div class="ptb"><main id="m"></main></div>
+<div class="ptf"><div class="pfoot">Agrimatco - Fleet</div></div>
+</div>
 <div id="ov" onclick="this.style.display='none'"><img id="ovi"></div>
 <script>
 const ADMIN = 'admin@fleet.local';
@@ -137,15 +220,21 @@ function stats(v) {
 }
 const dur = ms => { const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} س ${m % 60} د` : `${m} د`; };
 const kindIc = r => r.kind === 'start' ? '🟢 انطلاق' : r.kind === 'end' ? '🏁 نهاية' : r.kind === 'stop' ? '📍 توقف' : '';
+const PF = [['name', 'الاسم'], ['phone', 'رقم الهاتف'], ['carType', 'نوع السيارة'], ['model', 'الموديل'], ['color', 'اللون'], ['plate', 'رقم المركبة'], ['vin', 'رقم الشاصي']];
+const profBlock = v => { const p = v.profile || {};
+  return Object.keys(p).length ? `<div class="card"><h3>${av(v.uid)} بيانات السائق والمركبة</h3><table>${PF.map(([k, l]) => `<tr><th style="width:160px">${l}</th><td>${esc(p[k])}</td></tr>`).join('')}</table></div>`
+    : '<div class="card"><small>لم يُدخل السائق بيانات المركبة بعد.</small></div>'; };
+const edLog = r => Object.values(r.editLog || {});
+const edTag = r => { const l = edLog(r); return l.length ? ` <span title="${esc(l.map(e => `${fmt(+e.from)} ← ${fmt(+e.to)} (${when(e.time)}): ${e.reason}`).join('\n'))}" style="color:#ef6c00;cursor:help">✏ مصحّح${l.length > 1 ? ' ×' + l.length : ''} (الأصلي ${fmt(+l[0].from)})</span>` : ''; };
 const stopDur = r => r.kind === 'stop' ? (r.leave ? dur(r.leave - r.time) : 'لم يغادر بعد') : '';
 function tripsTbl(v) {
   if (!(v.trips || []).length) return '';
-  return `<h3>الرحلات (${v.trips.length})</h3><table><tr><th>البداية</th><th>النهاية</th><th>مدة الرحلة</th><th>المسافة</th><th>التوقفات</th><th>مجموع وقت التوقف</th></tr>
+  return `<h3>الرحلات (${v.trips.length})</h3><table><tr><th>البداية</th><th>النهاية</th><th>مدة الرحلة</th><th>المسافة</th><th>التوقفات</th><th>مجموع وقت التوقف</th><th class="noprint">حذف</th></tr>
     ${[...v.trips].sort((a, b) => b.startTime - a.startTime).map(t => {
       const ps = v.points.filter(p => p.tripId === t.id), stops = ps.filter(p => p.kind === 'stop'), end = t.endTime || 0;
       const odo = end ? t.endOdo : Math.max(t.startOdo, ...ps.map(p => p.odo));
       const stopMs = stops.reduce((a, p) => a + ((p.leave || end || Date.now()) - p.time), 0);
-      return `<tr><td>${when(t.startTime)}</td><td>${end ? when(end) : '<b>جارية</b>'}</td><td>${dur((end || Date.now()) - t.startTime)}</td><td>${fmt(odo - t.startOdo)} كم</td><td>${stops.length}</td><td>${dur(stopMs)}</td></tr>`;
+      return `<tr><td>${when(t.startTime)}</td><td>${end ? when(end) : '<b>جارية</b>'}</td><td>${dur((end || Date.now()) - t.startTime)}</td><td>${fmt(odo - t.startOdo)} كم</td><td>${stops.length}</td><td>${dur(stopMs)}</td><td class="noprint"><button class="p r tdel" data-u="${esc(v.uid)}" data-t="${t.id}">🗑 حذف</button></td></tr>`;
     }).join('')}</table>`;
 }
 async function loadImg(el) {
@@ -250,6 +339,7 @@ function csvCell(x) { x = String(x ?? ''); return /[",\n\r]/.test(x) ? '"' + x.r
 function exportCsv() {
   const R = reportData(), L = [];
   const title = (rpMon ? mfull(rpMon) : 'كل الفترات');
+  L.push(['Agrimatco - Fleet']);
   L.push(['تقرير المركبات', title]);
   L.push([]);
   L.push(['ملخص']); L.push(['السائق', 'المركبة', 'المسافة (كم)', 'نقاط التوقف', 'عدد الفواتير', 'إجمالي المصروفات']);
@@ -275,7 +365,7 @@ function drawReports(m) {
   m.innerHTML = `<div class="bar noprint"><b>السائق:</b>
       <select id="rf1"><option value="">كل السائقين</option>${list.map(v => `<option value="${esc(v.uid)}" ${v.uid === rpDrv ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
       <b>الفترة:</b><select id="rf2"><option value="">كل الفترات</option>${monOpts.map(k => `<option value="${k}" ${k === rpMon ? 'selected' : ''}>${mfull(k)}</option>`).join('')}</select>
-      <button class="p" id="rx">📊 تصدير Excel</button><button class="p" id="rp">🖨️ طباعة / PDF</button></div>
+      <button class="p" id="rx">📊 تصدير Excel</button><button class="p" id="rp">🖨️ طباعة</button>${window.fleetAPI ? '<button class="p" id="rpdf">📄 حفظ PDF</button>' : ''}</div>
     <div class="card"><h2>تقرير المركبات — ${rpMon ? mfull(rpMon) : 'كل الفترات'}</h2>
       <div>إجمالي المسافة: <b>${fmt(totD)} كم</b> — إجمالي المصروفات: <b>${money(totE)}</b> — تاريخ التقرير: ${new Date().toLocaleDateString('ar')}</div></div>
     ${R.map(r => `<div class="card"><h3>${esc(r.v.name)} — ${esc(r.v.vehicle || 'بدون مركبة')}</h3>
@@ -286,6 +376,7 @@ function drawReports(m) {
   $('#rf2').onchange = e => { rpMon = e.target.value; draw(); };
   $('#rx').onclick = exportCsv;
   $('#rp').onclick = () => window.print();
+  if ($('#rpdf')) $('#rpdf').onclick = savePdf;
 }
 
 
@@ -314,10 +405,11 @@ function drawFiltered(m, kind) {
         .filter(r => r.time >= t0 && r.time <= t1 && (!q || String(r.name).toLowerCase().includes(q)))
         .sort((a, b) => b.time - a.time);
       const tot = rows.reduce((t, r) => t + r.seg, 0);
-      h = `<div class="kpis"><div class="kpi"><small>عدد النقاط</small><div class="v">${rows.length}</div></div>
+      const one = F.drv ? D.find(v => v.uid === F.drv) : null;
+      h = `${one ? profBlock(one) : ''}<div class="kpis"><div class="kpi"><small>عدد النقاط</small><div class="v">${rows.length}</div></div>
         <div class="kpi"><small>إجمالي المسافة</small><div class="v">${fmt(tot)} كم</div></div></div>
-        ${rows.length ? `<table><tr><th>#</th><th>السائق</th><th>المركبة</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th></tr>
-        ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${av(r.uid)} ${esc(r.car)}</td><td>${esc(r.veh)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${fmt(r.seg)} كم</td><td>${when(r.time)}</td></tr>`).join('')}</table>` : '<p>لا نتائج مطابقة.</p>'}`;
+        ${rows.length ? `<table><tr><th>#</th><th>السائق</th><th>المركبة</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th><th>النوع</th><th>مدة التوقف</th></tr>
+        ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${av(r.uid)} ${esc(r.car)}</td><td>${esc(r.veh)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}${edTag(r)}</td><td>${fmt(r.seg)} كم</td><td>${when(r.time)}</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>` : '<p>لا نتائج مطابقة.</p>'}${one ? tripsTbl(one) : ''}`;
     } else {
       const all = drs.flatMap(v => v.invoices.map(i => ({ ...i, car: v.name, uid: v.uid, veh: v.vehicle })))
         .filter(i => i.time >= t0 && i.time <= t1 && (!q || String(i.note).toLowerCase().includes(q) || String(i.amount).toLowerCase().includes(q)))
@@ -435,7 +527,7 @@ function badges() {
   const a = document.querySelector('nav button[data-t=mnt]'), n = mntAlerts().length;
   if (a) a.innerHTML = 'الصيانة' + (n ? ` <span class="nb">${n}</span>` : '');
   const b = document.querySelector('nav button[data-t=del]'), k = dlNew();
-  if (b) b.innerHTML = 'سجل الحذف' + (k ? ` <span class="nb">${k}</span>` : '');
+  if (b) b.innerHTML = 'الحذف والتصحيح' + (k ? ` <span class="nb">${k}</span>` : '');
 }
 function delBanner() {
   const k = dlNew(); if (!k) return '';
@@ -448,7 +540,10 @@ function drawDel(m) {
     (rows.length ? `<h3>سجل حذف النقاط (${rows.length})</h3><table><tr><th>السائق</th><th>المركبة</th><th>النقطة المحذوفة</th><th>العداد</th><th>وقت تسجيل النقطة</th><th>وقت الحذف</th><th>سبب الحذف</th></tr>
       ${rows.map(x => { const v = D.find(d => d.uid === x.uid) || {}; return `<tr style="${x.time > seen ? 'background:#fff3e0' : ''}"><td>${av(x.uid)} ${esc(v.name || x.uid)}</td><td>${esc(v.vehicle || '')}</td><td>${esc(x.name)}</td><td>${fmt(+x.odo || 0)}</td><td>${when(x.pointTime)}</td><td>${when(x.time)}</td><td>${esc(x.reason)}</td></tr>`; }).join('')}</table>
       <small>الصفوف المظلّلة جديدة. لا يستطيع السائق تعديل أو مسح هذه التقارير بعد إرسالها.</small>`
-      : '<p>لا توجد عمليات حذف.</p>');
+      : '<p>لا توجد عمليات حذف (السائقون لم يعودوا قادرين على الحذف).</p>');
+  const eds = D.flatMap(v => v.points.flatMap(p => edLog(p).map(e => ({ ...e, v, p })))).sort((a, b) => b.time - a.time);
+  m.innerHTML += eds.length ? `<h3 style="margin-top:22px">✏ تصحيحات العداد (${eds.length})</h3><table><tr><th>السائق</th><th>المركبة</th><th>النقطة</th><th>من</th><th>إلى</th><th>الفرق</th><th>وقت التصحيح</th><th>السبب</th></tr>
+    ${eds.map(e => `<tr><td>${av(e.v.uid)} ${esc(e.v.name)}</td><td>${esc(e.v.vehicle || '')}</td><td>${esc(e.p.name)}</td><td>${fmt(+e.from)}</td><td>${fmt(+e.to)}</td><td>${fmt(+e.to - +e.from)}</td><td>${when(e.time)}</td><td>${esc(e.reason)}</td></tr>`).join('')}</table>` : '';
   if (rows.length) { localStorage.setItem('dlSeen', String(rows[0].time)); badges(); }
 }
 
@@ -492,7 +587,7 @@ function drawTrips(m) {
           const d = days[k], dist = d.pts.reduce((a, r) => a + r.seg, 0), ex = d.inv.reduce((a, i) => a + num(i.amount), 0);
           return `<details class="day" ${idx === 0 ? 'open' : ''}><summary><span>📅 ${dayLabel(k)}</span><small>🚗 ${fmt(dist)} كم</small><small>📍 ${d.pts.length} نقطة</small><small>🧾 ${d.inv.length} فاتورة${d.inv.length ? ' (' + money(ex) + ')' : ''}</small></summary>
             <div class="bd">${d.pts.length ? `<table><tr><th>الوقت</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>النوع</th><th>مدة التوقف</th></tr>
-              ${d.pts.map(r => `<tr><td>${hm(r.time)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${fmt(r.seg)} كم</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>` : '<small>لا توجد نقاط توقف</small>'}
+              ${d.pts.map(r => `<tr><td>${hm(r.time)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}${edTag(r)}</td><td>${fmt(r.seg)} كم</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>` : '<small>لا توجد نقاط توقف</small>'}
               ${d.inv.length ? `<table style="margin-top:8px"><tr><th>الوقت</th><th>الفاتورة</th><th>المبلغ</th></tr>
               ${d.inv.sort((a, b) => a.time - b.time).map(i => `<tr><td>${hm(i.time)}</td><td>${esc(i.note)}</td><td>${esc(i.amount)}</td></tr>`).join('')}</table>` : ''}</div></details>`;
         }).join('')}</div>`;
@@ -562,7 +657,7 @@ function drawNow(m) {
       const rows = x.tp.slice(-6);
       return `<div class="card click ${x.cls}" data-u="${esc(x.v.uid)}">
         <h3>${av(x.v.uid)} ${esc(x.v.name)}</h3>
-        <div>🚗 ${esc(x.v.vehicle || 'بدون مركبة')}</div>
+        <div>🚗 ${esc(x.v.vehicle || 'بدون مركبة')}${x.v.profile && x.v.profile.phone ? ` — 📞 ${esc(x.v.profile.phone)}` : ''}</div>
         <div style="font-size:18px;font-weight:bold;margin:6px 0">${x.st}</div>
         <div>${x.detail}</div>
         ${x.todays.length ? `<div style="margin-top:6px">🛣 ${fmt(x.km)} كم — 📍 ${x.stops} توقف (${dur(x.stopMs)})${x.exp ? ` — 🧾 ${money(x.exp)}` : ''}</div>` : ''}
@@ -594,15 +689,17 @@ function draw() {
     h = '<div class="grid">' + act.map(v => { const s = stats(v); return `<div class="card click ${v.active ? '' : 'off'}" data-u="${esc(v.uid)}">
       <h3>${av(v.uid)} ${esc(v.name)} ${v.active ? '' : '(معطّل)'}</h3><div>🚗 ${esc(v.vehicle || 'بدون مركبة')}</div>
       <div class="big">${fmt(s.total)} كم</div>
+      ${v.profile && v.profile.phone ? `<div>📞 ${esc(v.profile.phone)}</div><div>🚘 ${esc(v.profile.carType)} ${esc(v.profile.model)} — ${esc(v.profile.plate)}</div>` : ''}
       <div>نقاط التوقف: ${v.points.length}</div><div>الفواتير: ${v.invoices.length}</div>
       <small>آخر مزامنة: ${when(v.lastSync)}</small></div>`; }).join('') + '</div>';
   } else if (tab === 'det') {
     if (!sel || !act.find(v => v.uid === sel)) sel = act[0].uid;
     const v = act.find(x => x.uid === sel), s = stats(v);
     h = `<select id="sel">${act.map(x => `<option value="${esc(x.uid)}" ${x.uid === sel ? 'selected' : ''}>${esc(x.name)} — ${esc(x.vehicle)}</option>`).join('')}</select>
+      ${profBlock(v)}
       <h3>المسافة الكلية: ${fmt(s.total)} كم — نقاط التوقف: ${s.rows.length}</h3>
       <table><tr><th>#</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th><th>النوع</th><th>مدة التوقف</th></tr>
-      ${s.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${i ? fmt(r.seg) + ' كم' : '-'}</td><td>${when(r.time)}</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>${tripsTbl(v)}`;
+      ${s.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}${edTag(r)}</td><td>${i ? fmt(r.seg) + ' كم' : '-'}</td><td>${when(r.time)}</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>${tripsTbl(v)}`;
   } else {
     const all = act.flatMap(v => v.invoices.map(i => ({ ...i, car: v.name, uid: v.uid }))).sort((a, b) => b.time - a.time);
     h = '<div class="grid">' + all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
@@ -710,12 +807,51 @@ async function poll(force) {
       D = Object.entries(dr || {}).map(([uid, d]) => {
         const x = (da || {})[uid] || {};
         return { uid, name: d.name || d.username, username: d.username, vehicle: d.vehicle || '', active: d.active === true,
-          lastSync: x.lastSync, photo: x.photoTime || 0, points: Object.values(x.points || {}), trips: Object.values(x.trips || {}), invoices: Object.values(x.invoices || {}) };
+          lastSync: x.lastSync, photo: x.photoTime || 0, points: Object.values(x.points || {}), trips: Object.values(x.trips || {}), profile: x.profile || {}, invoices: Object.values(x.invoices || {}) };
       });
       if (tab !== 'set' && tab !== 'drv') draw();
     }
   } catch (e) { setStatus('خطأ: ' + e.message); }
 }
 new MutationObserver(loadAvatars).observe($('#m'), { childList: true });
+
+// ---------- حذف رحلة (المدير): علامة حذف للهاتف + إزالة الرحلة ونقاطها من قاعدة البيانات ----------
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.tdel'); if (!b) return;
+  const v = D.find(x => x.uid === b.dataset.u), id = b.dataset.t;
+  const t = v && v.trips.find(x => String(x.id) === id); if (!t) return;
+  const pts = v.points.filter(p => String(p.tripId) === id);
+  if (!confirm(`حذف رحلة ${v.name} (${when(t.startTime)})؟\nستُحذف معها ${pts.length} نقطة نهائياً من البرنامج ومن هاتف السائق، ولا يمكن التراجع.`)) return;
+  b.disabled = true;
+  try {
+    await api('PUT', `removed/${v.uid}/${id}`, { id: Number(id), time: Date.now() }); // أولاً: كي لا تعود من هاتف السائق
+    for (const p of pts) await api('DELETE', `data/${v.uid}/points/${p.id}`);
+    await api('DELETE', `data/${v.uid}/trips/${id}`);
+    await poll(true); draw();
+  } catch (err) {
+    alert('تعذّر الحذف: ' + err.message + '\nتأكد من لصق قواعد Firebase الجديدة (قسم removed) ثم Publish.');
+    b.disabled = false;
+  }
+});
 draw(); poll(); setInterval(poll, 10000);
+
+// ---------- Agrimatco - Fleet: اسم الملف/العنوان عند الطباعة وحفظ PDF ----------
+function pdfName() {
+  const t = document.querySelector('nav button.on');
+  return 'Agrimatco - Fleet - ' + (t ? t.textContent.replace(/[0-9\s]+$/, '').trim() : 'تقرير') + ' - ' + new Date().toISOString().slice(0, 10);
+}
+(function () {
+  let old = 'Agrimatco - Fleet';
+  window.addEventListener('beforeprint', () => {
+    old = document.title; document.title = pdfName();
+    const d = document.getElementById('pdate'); if (d) d.textContent = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
+  });
+  window.addEventListener('afterprint', () => { document.title = old || 'Agrimatco - Fleet'; });
+})();
+async function savePdf() {
+  const d = document.getElementById('pdate'); if (d) d.textContent = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
+  document.body.classList.add('pdfmode'); // الترويسة تأتي من قالب PDF (تتكرر في كل صفحة)
+  try { await window.fleetAPI.savePdf(pdfName()); } catch (e) { alert('تعذّر حفظ PDF: ' + e.message); }
+  document.body.classList.remove('pdfmode');
+}
 </script></body></html>

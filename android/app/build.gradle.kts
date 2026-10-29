@@ -14,8 +14,19 @@ android {
         applicationId = "com.fleet.tracker"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // يزيد رقم الإصدار تلقائياً مع كل بناء على GitHub، فيُثبَّت التحديث فوق القديم
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0
+        versionCode = 100 + run
+        versionName = "1.1.$run"
+    }
+    // مفتاح توقيع ثابت: بدونه كل بناء يُوقَّع بمفتاح عشوائي جديد ويرفض أندرويد التحديث
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("fleet-sign.jks")
+            storePassword = "fleet2026"
+            keyAlias = "fleet"
+            keyPassword = "fleet2026"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

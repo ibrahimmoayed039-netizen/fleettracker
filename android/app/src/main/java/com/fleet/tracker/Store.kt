@@ -57,6 +57,13 @@ class Store private constructor(private val ctx: Context) {
     val builtApi: String get() = res("google_api_key")
     val builtDb: String get() = res("firebase_database_url")
 
+    /** بيانات السائق والمركبة (إجبارية عند أول تسجيل دخول) */
+    val profileKeys = listOf("name", "phone", "carType", "model", "color", "plate", "vin")
+    fun prof(k: String) = str("p_$k")
+    fun setProf(k: String, v: String) = put("p_$k", v)
+    fun profileDone() = profileKeys.all { prof(it).isNotBlank() } && avatarFile().exists()
+    fun profileJson(): JSONObject { val o = JSONObject(); profileKeys.forEach { o.put(it, prof(it)) }; return o }
+
     /** هل السائق مسجّل الدخول؟ */
     fun configured() = uid.isNotEmpty() && refreshToken.isNotEmpty() && apiKey.isNotEmpty() && dbUrl.isNotEmpty()
 
@@ -107,6 +114,14 @@ class Store private constructor(private val ctx: Context) {
             }
         }
         points = filtered(points, id); save()
+    }
+    /** رحلات حذفها المدير: تُزال مع نقاطها من الهاتف كي لا تُرفع من جديد */
+    @Synchronized fun applyRemoved(ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        val np = JSONArray(); val nt = JSONArray()
+        for (i in 0 until points.length()) { val p = points.getJSONObject(i); if (p.optLong("tripId") !in ids) np.put(p) }
+        for (i in 0 until trips.length()) { val t = trips.getJSONObject(i); if (t.getLong("id") !in ids) nt.put(t) }
+        if (np.length() != points.length() || nt.length() != trips.length()) { points = np; trips = nt; save() }
     }
     fun delInvoice(id: Long) { invoices = filtered(invoices, id); save() }
 

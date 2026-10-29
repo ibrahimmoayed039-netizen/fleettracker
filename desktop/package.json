@@ -1,15 +1,22 @@
 {
   "name": "fleet-desktop",
-  "version": "1.0.0",
-  "description": "برنامج متابعة المركبات",
-  "author": "Fleet",
+  "version": "1.1.0",
+  "description": "Agrimatco - Fleet | برنامج متابعة المركبات",
+  "author": "Agrimatco",
   "main": "main.js",
   "scripts": { "start": "electron .", "dist": "electron-builder --win --publish never" },
   "devDependencies": { "electron": "^31.0.0", "electron-builder": "^24.13.3" },
   "build": {
     "appId": "com.fleet.desktop",
-    "productName": "FleetDesktop",
-    "files": ["main.js", "index.html"],
-    "win": { "target": "nsis" }
+    "productName": "Agrimatco - Fleet",
+    "artifactName": "Agrimatco-Fleet-Setup-${version}.${ext}",
+    "files": ["main.js", "preload.js", "index.html", "assets/**/*"],
+    "win": { "target": "nsis", "icon": "assets/icon.ico" },
+    "nsis": {
+      "shortcutName": "Agrimatco - Fleet",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico"
+    }
   }
 }

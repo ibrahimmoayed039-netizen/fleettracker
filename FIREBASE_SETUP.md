@@ -35,6 +35,13 @@
       ".read": "auth.token.email === 'admin@fleet.local'",
       ".write": "auth.token.email === 'admin@fleet.local'"
     },
+    "removed": {
+      ".read": "auth.token.email === 'admin@fleet.local'",
+      ".write": "auth.token.email === 'admin@fleet.local'",
+      "$uid": {
+        ".read": "auth.uid === $uid"
+      }
+    },
     "deletions": {
       ".read": "auth.token.email === 'admin@fleet.local'",
       ".write": "auth.token.email === 'admin@fleet.local'",

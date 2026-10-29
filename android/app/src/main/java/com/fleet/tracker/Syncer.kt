@@ -84,7 +84,7 @@ object Syncer {
     private fun doSync(st: Store) {
         val base = st.dbUrl.trimEnd('/')
         // نسخ مرجعية: الواجهة قد تعدّل البيانات أثناء الإرسال
-        val dels = st.deletions; val ptsA = st.points; val tripsA = st.trips; val invsA = st.invoices
+        val dels = st.deletions; val invsA = st.invoices
         val uid = st.uid
         val token = Cloud.refresh(st.apiKey, st.refreshToken)
 
@@ -92,6 +92,16 @@ object Syncer {
         val d = if (dr == "null") null else JSONObject(dr)
         if (d == null || !d.optBoolean("active")) throw Disabled()
         st.driverName = d.optString("name"); st.vehicle = d.optString("vehicle")
+
+        // رحلات حذفها المدير: تُزال من الهاتف قبل الرفع (إن لم تُنشر القواعد الجديدة بعد يُتجاهل الخطأ 401/403)
+        try {
+            val rm = Cloud.call("GET", "$base/removed/$uid.json?auth=$token", null).trim()
+            if (rm != "null") st.applyRemoved(JSONObject(rm).keys().asSequence().mapNotNull { it.toLongOrNull() }.toSet())
+        } catch (e: Exception) {
+            val m = e.message ?: ""
+            if (!m.startsWith("HTTP 401") && !m.startsWith("HTTP 403")) throw e
+        }
+        val ptsA = st.points; val tripsA = st.trips
 
         // تقارير حذف النقاط تُرسل أولاً؛ إن فشلت لا تُحدَّث النقاط عند المدير
         for (k in 0 until dels.length()) {
@@ -135,7 +145,7 @@ object Syncer {
                 .put("amount", o.optString("amount")).put("time", o.getLong("time")))
         }
         val node = JSONObject().put("name", st.driverName).put("vehicle", st.vehicle)
-            .put("lastSync", System.currentTimeMillis()).put("photoTime", if (af.exists()) st.photoTime else 0L).put("points", pts).put("trips", trips).put("invoices", invs)
+            .put("lastSync", System.currentTimeMillis()).put("photoTime", if (af.exists()) st.photoTime else 0L).put("points", pts).put("trips", trips).put("invoices", invs).put("profile", st.profileJson())
         Cloud.call("PUT", "$base/data/$uid.json?auth=$token", node.toString())
     }
 
