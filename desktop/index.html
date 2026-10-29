@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>متابعة المركبات</title>
+<style>
+body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;background:#f4f6f8;color:#222}
+header{background:#1565c0;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+nav{display:flex;background:#fff;border-bottom:1px solid #ddd}
+nav button{flex:1;padding:12px;border:0;background:none;font-size:16px;cursor:pointer}
+nav button.on{border-bottom:3px solid #1565c0;color:#1565c0;font-weight:bold}
+main{padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px #0002;margin-bottom:14px}
+.grid .card{margin:0}
+.card.click{cursor:pointer}
+.big{font-size:26px;font-weight:bold;color:#1565c0}
+table{width:100%;border-collapse:collapse;background:#fff}
+td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
+th{background:#eef2f7}
+input{padding:8px;font-size:15px;margin-bottom:10px;width:100%;box-sizing:border-box}
+td input{margin:0}
+select{padding:8px;font-size:15px;margin-bottom:12px}
+.form{max-width:560px}
+button.p{padding:8px 16px;font-size:14px;background:#1565c0;color:#fff;border:0;border-radius:6px;cursor:pointer;margin-left:6px}
+button.r{background:#c62828}
+.msg{margin:8px 0;color:#c62828}.ok{color:#2e7d32}
+.off{opacity:.5}
+img{max-width:100%;border-radius:6px;cursor:pointer;min-height:60px}
+#ov{display:none;position:fixed;inset:0;background:#000c;align-items:center;justify-content:center}
+#ov img{max-height:92vh;max-width:92vw}
+</style></head><body>
+<header><b>🚚 متابعة المركبات</b><small id="st"></small></header>
+<nav>
+  <button data-t="cars" class="on">السائقون</button>
+  <button data-t="det">التفاصيل</button>
+  <button data-t="inv">الفواتير</button>
+  <button data-t="drv">إدارة السائقين</button>
+  <button data-t="set">الإعدادات</button>
+</nav>
+<main id="m"></main>
+<div id="ov" onclick="this.style.display='none'"><img id="ovi"></div>
+<script>
+const ADMIN = 'admin@fleet.local';
+let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('cfg') || '{}'); } catch {}
+let D = [], sel = '', last = '', tok = null, tokExp = 0, flash = '';
+let tab = (cfg.api && cfg.db && localStorage.getItem('adm')) ? 'cars' : 'set';
+const imgs = new Map();
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
+const when = t => t ? new Date(t).toLocaleString('ar') : '-';
+const dbUrl = () => cfg.db.replace(/\/+$/, '');
+const setStatus = t => $('#st').textContent = t;
+const tr = m => ({
+  EMAIL_EXISTS: 'اسم المستخدم مستخدم مسبقاً',
+  INVALID_LOGIN_CREDENTIALS: 'كلمة المرور غير صحيحة',
+  INVALID_PASSWORD: 'كلمة المرور غير صحيحة',
+  EMAIL_NOT_FOUND: 'حساب المدير غير موجود، اضغط «إنشاء حساب المدير»',
+  OPERATION_NOT_ALLOWED: 'فعّل Email/Password في Firebase Authentication',
+  WEAK_PASSWORD: 'كلمة المرور ضعيفة (6 أحرف على الأقل)'
+}[String(m).split(' ')[0]] || m);
+
+// ---------- Firebase Auth (REST) ----------
+async function authCall(endpoint, body) {
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${encodeURIComponent(cfg.api)}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, returnSecureToken: true }) });
+  const j = await r.json();
+  if (j.error) throw new Error(tr(j.error.message));
+  return j;
+}
+function saveSession(j) {
+  localStorage.setItem('adm', j.refreshToken);
+  tok = j.idToken; tokExp = Date.now() + 50 * 60000;
+}
+async function token() {
+  if (tok && Date.now() < tokExp) return tok;
+  const rt = localStorage.getItem('adm');
+  if (!rt) throw new Error('سجّل دخول المدير من الإعدادات');
+  const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(cfg.api), {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(rt) });
+  const j = await r.json();
+  if (!j.id_token) { localStorage.removeItem('adm'); throw new Error('انتهت الجلسة، سجّل الدخول مجدداً'); }
+  tok = j.id_token; tokExp = Date.now() + 50 * 60000; return tok;
+}
+async function api(method, path, body) {
+  const r = await fetch(`${dbUrl()}/${path}.json?auth=${await token()}`,
+    { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ---------- إحصاءات ----------
+function stats(v) {
+  const p = [...v.points].sort((a, b) => a.time - b.time); let t = 0;
+  const rows = p.map((x, i) => { const s = i ? Math.max(0, x.odo - p[i - 1].odo) : 0; t += s; return { ...x, seg: s }; });
+  return { rows, total: t };
+}
+async function loadImg(el) {
+  const k = el.dataset.v + '/' + el.dataset.id;
+  try {
+    if (!imgs.has(k)) {
+      const s = await api('GET', `images/${encodeURIComponent(el.dataset.v)}/${el.dataset.id}`);
+      if (s) imgs.set(k, 'data:image/jpeg;base64,' + s);
+    }
+    if (imgs.has(k)) el.src = imgs.get(k);
+  } catch {}
+}
+
+// ---------- الرسم ----------
+function draw() {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  const m = $('#m'); let h = '';
+  if (tab === 'set') { drawSettings(m); return; }
+  if (tab === 'drv') { drawDrivers(m); return; }
+  const act = D.filter(v => v.points.length || v.invoices.length || v.active);
+  if (!act.length) h = '<p>لا توجد بيانات بعد. أضف سائقين من «إدارة السائقين» ثم يزامن السائق من هاتفه.</p>';
+  else if (tab === 'cars') {
+    h = '<div class="grid">' + act.map(v => { const s = stats(v); return `<div class="card click ${v.active ? '' : 'off'}" data-u="${esc(v.uid)}">
+      <h3>${esc(v.name)} ${v.active ? '' : '(معطّل)'}</h3><div>🚗 ${esc(v.vehicle || 'بدون مركبة')}</div>
+      <div class="big">${fmt(s.total)} كم</div>
+      <div>نقاط التوقف: ${v.points.length}</div><div>الفواتير: ${v.invoices.length}</div>
+      <small>آخر مزامنة: ${when(v.lastSync)}</small></div>`; }).join('') + '</div>';
+  } else if (tab === 'det') {
+    if (!sel || !act.find(v => v.uid === sel)) sel = act[0].uid;
+    const v = act.find(x => x.uid === sel), s = stats(v);
+    h = `<select id="sel">${act.map(x => `<option value="${esc(x.uid)}" ${x.uid === sel ? 'selected' : ''}>${esc(x.name)} — ${esc(x.vehicle)}</option>`).join('')}</select>
+      <h3>المسافة الكلية: ${fmt(s.total)} كم — نقاط التوقف: ${s.rows.length}</h3>
+      <table><tr><th>#</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th></tr>
+      ${s.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${i ? fmt(r.seg) + ' كم' : '-'}</td><td>${when(r.time)}</td></tr>`).join('')}</table>`;
+  } else {
+    const all = act.flatMap(v => v.invoices.map(i => ({ ...i, car: v.name, uid: v.uid }))).sort((a, b) => b.time - a.time);
+    h = '<div class="grid">' + all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
+      <div><b>${esc(i.car)}</b> — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('') + '</div>';
+  }
+  m.innerHTML = h;
+  m.querySelectorAll('.card.click').forEach(c => c.onclick = () => { sel = c.dataset.u; tab = 'det'; draw(); });
+  const se = $('#sel'); if (se) se.onchange = () => { sel = se.value; draw(); };
+  m.querySelectorAll('img').forEach(im => {
+    im.onclick = () => { if (im.src) { $('#ovi').src = im.src; $('#ov').style.display = 'flex'; } };
+    loadImg(im);
+  });
+}
+
+function drawDrivers(m) {
+  m.innerHTML = `<div class="card form"><h3>إضافة سائق جديد</h3>
+    <input id="d1" placeholder="اسم السائق (للعرض)">
+    <input id="d2" placeholder="اسم المستخدم (حروف إنجليزية وأرقام فقط، 3-20)" dir="ltr">
+    <input id="d3" placeholder="كلمة المرور (6 أحرف فأكثر)" dir="ltr">
+    <input id="d4" placeholder="رقم / اسم المركبة المخصصة">
+    <button class="p" id="add">إضافة السائق</button><div class="msg" id="dm">${esc(flash)}</div></div>
+    <h3>السائقون (${D.length})</h3>
+    <table><tr><th>الاسم</th><th>المستخدم</th><th>المركبة</th><th>الحالة</th><th></th></tr>
+    ${D.map(v => `<tr class="${v.active ? '' : 'off'}"><td><input data-f="n" data-u="${esc(v.uid)}" value="${esc(v.name)}"></td>
+      <td dir="ltr">${esc(v.username)}</td>
+      <td><input data-f="v" data-u="${esc(v.uid)}" value="${esc(v.vehicle)}"></td>
+      <td>${v.active ? 'مفعّل' : 'معطّل'}</td>
+      <td><button class="p sv" data-u="${esc(v.uid)}">حفظ</button>
+      <button class="p ${v.active ? 'r' : ''} tg" data-u="${esc(v.uid)}">${v.active ? 'تعطيل' : 'تفعيل'}</button></td></tr>`).join('')}</table>`;
+  flash = '';
+  const say = (t, ok) => { const e = $('#dm'); e.textContent = t; e.className = 'msg' + (ok ? ' ok' : ''); };
+  $('#add').onclick = async () => {
+    const name = $('#d1').value.trim(), user = $('#d2').value.trim().toLowerCase(), pw = $('#d3').value, veh = $('#d4').value.trim();
+    if (!name) return say('أدخل اسم السائق');
+    if (!/^[a-z0-9_.]{3,20}$/.test(user)) return say('اسم المستخدم: حروف إنجليزية صغيرة وأرقام فقط (3-20)');
+    if (pw.length < 6) return say('كلمة المرور 6 أحرف على الأقل');
+    try {
+      say('جارٍ الإضافة...', true);
+      const j = await authCall('signUp', { email: user + '@fleet.local', password: pw });
+      await api('PUT', 'drivers/' + j.localId, { name, username: user, vehicle: veh, active: true, created: Date.now() });
+      flash = 'تمت إضافة السائق ✓ — أعطه كود الإعداد واسم المستخدم وكلمة المرور';
+      await poll(true); draw();
+    } catch (e) { say(e.message); }
+  };
+  m.querySelectorAll('.sv').forEach(b => b.onclick = async () => {
+    const u = b.dataset.u, g = f => m.querySelector(`input[data-f=${f}][data-u="${u}"]`).value.trim();
+    try { await api('PUT', `drivers/${u}/name`, g('n')); await api('PUT', `drivers/${u}/vehicle`, g('v')); await poll(true); flash = 'تم الحفظ ✓'; draw(); }
+    catch (e) { say(e.message); }
+  });
+  m.querySelectorAll('.tg').forEach(b => b.onclick = async () => {
+    const v = D.find(x => x.uid === b.dataset.u);
+    try { await api('PUT', `drivers/${v.uid}/active`, !v.active); await poll(true); draw(); }
+    catch (e) { say(e.message); }
+  });
+}
+
+function drawSettings(m) {
+  const logged = !!localStorage.getItem('adm');
+  const code = (cfg.api && cfg.db) ? 'FLEET:' + btoa(JSON.stringify({ a: cfg.api, d: cfg.db.replace(/\/+$/, '') })) : '';
+  m.innerHTML = `<div class="form">
+    <div class="card"><h3>1) إعدادات Firebase</h3>
+      <label>Web API Key</label><input id="c1" value="${esc(cfg.api)}" dir="ltr">
+      <label>رابط قاعدة البيانات</label><input id="c2" value="${esc(cfg.db)}" dir="ltr">
+      <button class="p" id="sv">حفظ</button></div>
+    <div class="card"><h3>2) حساب المدير ${logged ? '✓ مسجّل الدخول' : ''}</h3>
+      <label>كلمة مرور المدير</label><input id="c3" type="password">
+      <button class="p" id="li">دخول</button>
+      <button class="p" id="cr">إنشاء حساب المدير (أول مرة فقط)</button>
+      ${logged ? '<button class="p r" id="lo">خروج</button>' : ''}
+      <div class="msg" id="sm"></div></div>
+    ${code ? `<div class="card"><h3>3) كود الإعداد للسائقين</h3>
+      <input id="c4" readonly value="${esc(code)}" dir="ltr"><button class="p" id="cp">نسخ</button>
+      <small>يُلصق مرة واحدة في تطبيق السائق. غير مطلوب إذا أضفت google-services.json إلى التطبيق.</small></div>` : ''}</div>`;
+  const say = (t, ok) => { const e = $('#sm'); e.textContent = t; e.className = 'msg' + (ok ? ' ok' : ''); };
+  $('#sv').onclick = () => {
+    cfg = { api: $('#c1').value.trim(), db: $('#c2').value.trim() };
+    localStorage.setItem('cfg', JSON.stringify(cfg)); tok = null; draw();
+  };
+  const go = async ep => {
+    if (!cfg.api) return say('احفظ إعدادات Firebase أولاً');
+    try {
+      saveSession(await authCall(ep, { email: ADMIN, password: $('#c3').value }));
+      last = ''; tab = 'cars'; await poll(true); draw();
+    } catch (e) { say(e.message); }
+  };
+  $('#li').onclick = () => go('signInWithPassword');
+  $('#cr').onclick = () => go('signUp');
+  const lo = $('#lo'); if (lo) lo.onclick = () => { localStorage.removeItem('adm'); tok = null; D = []; draw(); };
+  const cp = $('#cp'); if (cp) cp.onclick = () => { navigator.clipboard.writeText(code); cp.textContent = 'تم النسخ ✓'; };
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => { tab = b.dataset.t; draw(); });
+
+async function poll(force) {
+  if (!cfg.api || !cfg.db || !localStorage.getItem('adm')) { setStatus('أدخل الإعدادات وسجّل دخول المدير'); return; }
+  try {
+    const [dr, da] = await Promise.all([api('GET', 'drivers'), api('GET', 'data')]);
+    setStatus('متصل ✓ ' + new Date().toLocaleTimeString('ar'));
+    const txt = JSON.stringify([dr, da]);
+    if (txt !== last || force) {
+      last = txt;
+      D = Object.entries(dr || {}).map(([uid, d]) => {
+        const x = (da || {})[uid] || {};
+        return { uid, name: d.name || d.username, username: d.username, vehicle: d.vehicle || '', active: d.active === true,
+          lastSync: x.lastSync, points: Object.values(x.points || {}), invoices: Object.values(x.invoices || {}) };
+      });
+      if (tab !== 'set' && tab !== 'drv') draw();
+    }
+  } catch (e) { setStatus('خطأ: ' + e.message); }
+}
+draw(); poll(); setInterval(poll, 10000);
+</script></body></html>

@@ -1,0 +1,2 @@
+ضع ملف google-services.json (من Firebase) في هذا المجلد: android/app/
+بعد وضعه يُفعَّل ربط Google Services تلقائياً عند البناء.

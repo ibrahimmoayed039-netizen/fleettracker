@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/t_trip" android:icon="@android:drawable/ic_menu_directions" android:title="@string/t_trip" />
+    <item android:id="@+id/t_inv" android:icon="@android:drawable/ic_menu_camera" android:title="@string/t_inv" />
+    <item android:id="@+id/t_sync" android:icon="@android:drawable/ic_menu_send" android:title="@string/t_sync" />
+</menu>

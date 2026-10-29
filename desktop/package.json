@@ -1,0 +1,15 @@
+{
+  "name": "fleet-desktop",
+  "version": "1.0.0",
+  "description": "برنامج متابعة المركبات",
+  "author": "Fleet",
+  "main": "main.js",
+  "scripts": { "start": "electron .", "dist": "electron-builder --win --publish never" },
+  "devDependencies": { "electron": "^31.0.0", "electron-builder": "^24.13.3" },
+  "build": {
+    "appId": "com.fleet.desktop",
+    "productName": "FleetDesktop",
+    "files": ["main.js", "index.html"],
+    "win": { "target": "nsis" }
+  }
+}
