@@ -24,12 +24,49 @@ button.r{background:#c62828}
 .msg{margin:8px 0;color:#c62828}.ok{color:#2e7d32}
 .off{opacity:.5}
 img{max-width:100%;border-radius:6px;cursor:pointer;min-height:60px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px #0002}
+.kpi small{color:#666}.kpi .v{font-size:22px;font-weight:bold;color:#1565c0}
+.up{color:#c62828}.dn{color:#2e7d32}.eq{color:#666}
+.hb{display:flex;align-items:center;gap:8px;margin:6px 0}
+.hb .l{width:110px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .t{flex:1;background:#eef2f7;border-radius:6px;height:22px;overflow:hidden}
+.hb .f{height:100%;background:#1565c0;border-radius:6px;min-width:2px}
+.hb .n{width:90px;font-size:13px;color:#444}
+.cols{display:flex;align-items:flex-end;gap:10px;height:190px;padding-top:20px}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.col .b{width:70%;max-width:46px;background:#1565c0;border-radius:6px 6px 0 0;min-height:2px}
+.col .b.cur{background:#f9a825}
+.col .n{font-size:12px;color:#333;margin-bottom:3px}
+.col .m{font-size:12px;color:#666;margin-top:4px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.bar select{margin:0}
+@media print{header,nav,.noprint{display:none!important}body{background:#fff}main{padding:0}.card{box-shadow:none;border:1px solid #ccc}}
+.bar input{margin:0;width:auto}
+.chip{display:inline-block;background:#e3f2fd;color:#0d47a1;border-radius:14px;padding:3px 10px;margin:3px;font-size:13px}
+.pg{background:#eef2f7;border-radius:6px;height:12px;overflow:hidden;margin:6px 0}
+.pg div{height:100%;border-radius:6px}
+.st-ok{color:#2e7d32}.st-soon{color:#ef6c00}.st-late{color:#c62828}
+.mi{border-top:1px solid #eee;padding:10px 0}
+.nb{background:#c62828;color:#fff;border-radius:10px;padding:0 7px;font-size:12px;margin-right:4px}
+nav button{font-size:14px;padding:12px 4px}
+.av{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;object-fit:cover;background:#cfd8dc;vertical-align:middle;margin-left:6px;font-size:20px}
+img.av{min-height:0;max-width:none}
+details.day{background:#fff;border-radius:8px;box-shadow:0 1px 3px #0002;margin:8px 0}
+details.day summary{padding:10px 12px;cursor:pointer;font-weight:bold;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+details.day summary small{font-weight:normal;color:#555}
+details.day .bd{padding:0 12px 12px}
 #ov{display:none;position:fixed;inset:0;background:#000c;align-items:center;justify-content:center}
 #ov img{max-height:92vh;max-width:92vw}
 </style></head><body>
 <header><b>🚚 متابعة المركبات</b><small id="st"></small></header>
 <nav>
   <button data-t="cars" class="on">السائقون</button>
+  <button data-t="stats">الإحصائيات</button>
+  <button data-t="trips">الرحلات اليومية</button>
+  <button data-t="mnt">الصيانة</button>
+  <button data-t="del">سجل الحذف</button>
+  <button data-t="rep">التقارير</button>
   <button data-t="det">التفاصيل</button>
   <button data-t="inv">الفواتير</button>
   <button data-t="drv">إدارة السائقين</button>
@@ -105,17 +142,376 @@ async function loadImg(el) {
   } catch {}
 }
 
+
+// ---------- لوحة الإحصائيات ----------
+let stDrv = '', stMon = '', stRange = 6;
+const mk = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const mlabel = k => { const [y, m] = k.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('ar', { month: 'short', year: '2-digit' }); };
+const mfull = k => { const [y, m] = k.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('ar', { month: 'long', year: 'numeric' }); };
+const monthsBack = n => { const a = [], d = new Date(); for (let i = n - 1; i >= 0; i--) { const x = new Date(d.getFullYear(), d.getMonth() - i, 1); a.push(x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0')); } return a; };
+const num = s => {
+  const t = String(s ?? '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 1632).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 1776)
+    .replace(/٫/g, '.').replace(/[,٬،\s]/g, '').replace(/[^0-9.\-]/g, '');
+  const n = parseFloat(t); return isFinite(n) ? n : 0;
+};
+const money = n => Math.round(n).toLocaleString('en-US');
+function hbars(items, unit) {
+  const mx = Math.max(...items.map(i => i.val), 0) || 1;
+  return items.map(i => `<div class="hb"><div class="l" title="${esc(i.label)}">${esc(i.label)}</div>
+    <div class="t"><div class="f" style="width:${(i.val / mx * 100).toFixed(1)}%"></div></div>
+    <div class="n">${unit === 'كم' ? fmt(i.val) : money(i.val)} ${unit}</div></div>`).join('');
+}
+function cols(keys, data, unit, curKey) {
+  const mx = Math.max(...keys.map(k => data[k] || 0), 0) || 1;
+  return '<div class="cols">' + keys.map(k => {
+    const v = data[k] || 0;
+    return `<div class="col"><div class="n">${v ? (unit === 'كم' ? fmt(v) : money(v)) : ''}</div>
+      <div class="b ${k === curKey ? 'cur' : ''}" style="height:${(v / mx * 100).toFixed(1)}%"></div><div class="m">${mlabel(k)}</div></div>`;
+  }).join('') + '</div>';
+}
+function delta(cur, prev, goodDown) {
+  if (!prev) return cur ? '<span class="eq">لا توجد بيانات للشهر السابق</span>' : '<span class="eq">—</span>';
+  const p = (cur - prev) / prev * 100;
+  if (Math.abs(p) < 0.5) return '<span class="eq">▬ بلا تغيير</span>';
+  const up = p > 0, bad = goodDown ? up : !up;
+  return `<span class="${bad ? 'up' : 'dn'}">${up ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%</span>`;
+}
+function drawStats(m) {
+  const list = D.filter(v => v.points.length || v.invoices.length);
+  if (!list.length) { m.innerHTML = '<p>لا توجد بيانات بعد لعرض الإحصائيات.</p>'; return; }
+  if (stDrv && !list.find(v => v.uid === stDrv)) stDrv = '';
+  const sub = stDrv ? list.filter(v => v.uid === stDrv) : list;
+  const dist = {}, exp = {};
+  sub.forEach(v => {
+    stats(v).rows.forEach(r => { if (r.seg) dist[mk(r.time)] = (dist[mk(r.time)] || 0) + r.seg; });
+    v.invoices.forEach(i => { exp[mk(i.time)] = (exp[mk(i.time)] || 0) + num(i.amount); });
+  });
+  const keys = monthsBack(stRange), cur = keys[keys.length - 1], prv = keys[keys.length - 2];
+  const perDrv = list.map(v => ({ label: v.name, val: stats(v).rows.reduce((t, r) => (!stMon || mk(r.time) === stMon) ? t + r.seg : t, 0) }))
+    .sort((a, b) => b.val - a.val);
+  const perExp = list.map(v => ({ label: v.name, val: v.invoices.reduce((t, i) => (!stMon || mk(i.time) === stMon) ? t + num(i.amount) : t, 0) }))
+    .sort((a, b) => b.val - a.val);
+  const totD = Object.values(dist).reduce((a, b) => a + b, 0), totE = Object.values(exp).reduce((a, b) => a + b, 0);
+  const monOpts = monthsBack(12).reverse();
+  m.innerHTML = `<div class="bar"><b>السائق:</b>
+      <select id="sf1"><option value="">كل السائقين</option>${list.map(v => `<option value="${esc(v.uid)}" ${v.uid === stDrv ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
+      <b>المدة:</b><select id="sf2"><option value="6" ${stRange === 6 ? 'selected' : ''}>آخر 6 أشهر</option><option value="12" ${stRange === 12 ? 'selected' : ''}>آخر 12 شهراً</option></select></div>
+    <div class="kpis">
+      <div class="kpi"><small>المسافة هذا الشهر (${mfull(cur)})</small><div class="v">${fmt(dist[cur] || 0)} كم</div>
+        <small>مقارنة بالشهر السابق: ${delta(dist[cur] || 0, dist[prv] || 0, false)}</small></div>
+      <div class="kpi"><small>المصروفات هذا الشهر</small><div class="v">${money(exp[cur] || 0)}</div>
+        <small>مقارنة بالشهر السابق: ${delta(exp[cur] || 0, exp[prv] || 0, true)}</small></div>
+      <div class="kpi"><small>الشهر السابق (${mfull(prv)})</small><div class="v">${fmt(dist[prv] || 0)} كم</div><small>المصروفات: ${money(exp[prv] || 0)}</small></div>
+      <div class="kpi"><small>الإجمالي (كل الفترات)</small><div class="v">${fmt(totD)} كم</div><small>المصروفات: ${money(totE)}</small></div>
+    </div>
+    <div class="card"><h3>🏆 أكثر السائقين مسافة</h3>
+      <div class="bar"><select id="sm1"><option value="">كل الفترات</option>${monOpts.map(k => `<option value="${k}" ${k === stMon ? 'selected' : ''}>${mfull(k)}</option>`).join('')}</select></div>
+      ${hbars(perDrv, 'كم')}</div>
+    <div class="card"><h3>💰 المصروفات حسب السائق ${stMon ? '(' + mfull(stMon) + ')' : ''}</h3>${hbars(perExp, '')}</div>
+    <div class="card"><h3>📊 المصروفات الشهرية</h3>${cols(keys, exp, '', cur)}</div>
+    <div class="card"><h3>📈 مقارنة المسافة بين الأشهر</h3>${cols(keys, dist, 'كم', cur)}
+      <small>العمود الأصفر = الشهر الحالي. تُحسب المسافة على شهر نقطة التوقف الأحدث، والمصروفات من مبالغ الفواتير.</small></div>`;
+  $('#sf1').onchange = e => { stDrv = e.target.value; draw(); };
+  $('#sf2').onchange = e => { stRange = +e.target.value; draw(); };
+  $('#sm1').onchange = e => { stMon = e.target.value; draw(); };
+}
+
+
+// ---------- التقارير ----------
+let rpDrv = '', rpMon = '';
+function reportData() {
+  const list = D.filter(v => v.points.length || v.invoices.length);
+  const sub = rpDrv ? list.filter(v => v.uid === rpDrv) : list;
+  const ok = t => !rpMon || mk(t) === rpMon;
+  return sub.map(v => {
+    const rows = stats(v).rows.filter(r => ok(r.time));
+    const invs = [...v.invoices].filter(i => ok(i.time)).sort((a, b) => a.time - b.time);
+    return { v, rows, invs, dist: rows.reduce((t, r) => t + r.seg, 0), exp: invs.reduce((t, i) => t + num(i.amount), 0) };
+  });
+}
+function csvCell(x) { x = String(x ?? ''); return /[",\n\r]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; }
+function exportCsv() {
+  const R = reportData(), L = [];
+  const title = (rpMon ? mfull(rpMon) : 'كل الفترات');
+  L.push(['تقرير المركبات', title]);
+  L.push([]);
+  L.push(['ملخص']); L.push(['السائق', 'المركبة', 'المسافة (كم)', 'نقاط التوقف', 'عدد الفواتير', 'إجمالي المصروفات']);
+  R.forEach(r => L.push([r.v.name, r.v.vehicle, fmt(r.dist), r.rows.length, r.invs.length, Math.round(r.exp)]));
+  L.push([]);
+  L.push(['نقاط التوقف']); L.push(['السائق', 'النقطة', 'العداد', 'المسافة من السابقة', 'الوقت']);
+  R.forEach(r => r.rows.forEach(x => L.push([r.v.name, x.name, x.odo, fmt(x.seg), when(x.time)])));
+  L.push([]);
+  L.push(['الفواتير']); L.push(['السائق', 'الملاحظة', 'المبلغ', 'الوقت']);
+  R.forEach(r => r.invs.forEach(i => L.push([r.v.name, i.note, i.amount, when(i.time)])));
+  const csv = '\ufeff' + L.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'تقرير-' + (rpMon || 'الكل') + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function drawReports(m) {
+  const list = D.filter(v => v.points.length || v.invoices.length);
+  if (!list.length) { m.innerHTML = '<p>لا توجد بيانات بعد لإنشاء تقرير.</p>'; return; }
+  if (rpDrv && !list.find(v => v.uid === rpDrv)) rpDrv = '';
+  const R = reportData(), monOpts = monthsBack(12).reverse();
+  const totD = R.reduce((t, r) => t + r.dist, 0), totE = R.reduce((t, r) => t + r.exp, 0);
+  m.innerHTML = `<div class="bar noprint"><b>السائق:</b>
+      <select id="rf1"><option value="">كل السائقين</option>${list.map(v => `<option value="${esc(v.uid)}" ${v.uid === rpDrv ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
+      <b>الفترة:</b><select id="rf2"><option value="">كل الفترات</option>${monOpts.map(k => `<option value="${k}" ${k === rpMon ? 'selected' : ''}>${mfull(k)}</option>`).join('')}</select>
+      <button class="p" id="rx">📊 تصدير Excel</button><button class="p" id="rp">🖨️ طباعة / PDF</button></div>
+    <div class="card"><h2>تقرير المركبات — ${rpMon ? mfull(rpMon) : 'كل الفترات'}</h2>
+      <div>إجمالي المسافة: <b>${fmt(totD)} كم</b> — إجمالي المصروفات: <b>${money(totE)}</b> — تاريخ التقرير: ${new Date().toLocaleDateString('ar')}</div></div>
+    ${R.map(r => `<div class="card"><h3>${esc(r.v.name)} — ${esc(r.v.vehicle || 'بدون مركبة')}</h3>
+      <div>المسافة: <b>${fmt(r.dist)} كم</b> — نقاط التوقف: ${r.rows.length} — الفواتير: ${r.invs.length} — المصروفات: <b>${money(r.exp)}</b></div>
+      ${r.rows.length ? `<table><tr><th>#</th><th>النقطة</th><th>العداد</th><th>المسافة</th><th>الوقت</th></tr>${r.rows.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.name)}</td><td>${fmt(x.odo)}</td><td>${fmt(x.seg)} كم</td><td>${when(x.time)}</td></tr>`).join('')}</table>` : ''}
+      ${r.invs.length ? `<table style="margin-top:10px"><tr><th>الفاتورة</th><th>المبلغ</th><th>الوقت</th></tr>${r.invs.map(i => `<tr><td>${esc(i.note)}</td><td>${esc(i.amount)}</td><td>${when(i.time)}</td></tr>`).join('')}</table>` : ''}</div>`).join('')}`;
+  $('#rf1').onchange = e => { rpDrv = e.target.value; draw(); };
+  $('#rf2').onchange = e => { rpMon = e.target.value; draw(); };
+  $('#rx').onclick = exportCsv;
+  $('#rp').onclick = () => window.print();
+}
+
+
+// ---------- فلاتر وبحث (النقاط والفواتير) ----------
+let F = { drv: '', veh: '', from: '', to: '', q: '' };
+function fRange() {
+  return [F.from ? new Date(F.from + 'T00:00:00').getTime() : -Infinity, F.to ? new Date(F.to + 'T23:59:59.999').getTime() : Infinity];
+}
+function drawFiltered(m, kind) {
+  if (!D.length) { m.innerHTML = '<p>لا توجد بيانات بعد. أضف سائقين من «إدارة السائقين» ثم يزامن السائق من هاتفه.</p>'; return; }
+  const vehs = [...new Set(D.map(v => v.vehicle).filter(Boolean))];
+  m.innerHTML = `<div class="card"><div class="bar">
+      <select id="f1"><option value="">كل السائقين</option>${D.map(v => `<option value="${esc(v.uid)}" ${v.uid === F.drv ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
+      <select id="f2"><option value="">كل المركبات</option>${vehs.map(x => `<option value="${esc(x)}" ${x === F.veh ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <label>من <input type="date" id="f3" value="${esc(F.from)}"></label>
+      <label>إلى <input type="date" id="f4" value="${esc(F.to)}"></label>
+      <input id="f5" placeholder="بحث: ${kind === 'inv' ? 'ملاحظة أو مبلغ' : 'اسم النقطة'}..." value="${esc(F.q)}" style="min-width:180px">
+      <button class="p" id="fm">هذا الشهر</button><button class="p r" id="fc">مسح الفلاتر</button></div></div>
+    <div id="res"></div>`;
+  const run = () => {
+    const [t0, t1] = fRange(), q = F.q.trim().toLowerCase();
+    const drs = D.filter(v => (!F.drv || v.uid === F.drv) && (!F.veh || v.vehicle === F.veh));
+    let h = '';
+    if (kind === 'det') {
+      const rows = drs.flatMap(v => stats(v).rows.map(r => ({ ...r, car: v.name, veh: v.vehicle, uid: v.uid })))
+        .filter(r => r.time >= t0 && r.time <= t1 && (!q || String(r.name).toLowerCase().includes(q)))
+        .sort((a, b) => b.time - a.time);
+      const tot = rows.reduce((t, r) => t + r.seg, 0);
+      h = `<div class="kpis"><div class="kpi"><small>عدد النقاط</small><div class="v">${rows.length}</div></div>
+        <div class="kpi"><small>إجمالي المسافة</small><div class="v">${fmt(tot)} كم</div></div></div>
+        ${rows.length ? `<table><tr><th>#</th><th>السائق</th><th>المركبة</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th><th>الوقت</th></tr>
+        ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${av(r.uid)} ${esc(r.car)}</td><td>${esc(r.veh)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${fmt(r.seg)} كم</td><td>${when(r.time)}</td></tr>`).join('')}</table>` : '<p>لا نتائج مطابقة.</p>'}`;
+    } else {
+      const all = drs.flatMap(v => v.invoices.map(i => ({ ...i, car: v.name, uid: v.uid, veh: v.vehicle })))
+        .filter(i => i.time >= t0 && i.time <= t1 && (!q || String(i.note).toLowerCase().includes(q) || String(i.amount).toLowerCase().includes(q)))
+        .sort((a, b) => b.time - a.time);
+      const tot = all.reduce((t, i) => t + num(i.amount), 0), by = {};
+      all.forEach(i => by[i.car] = (by[i.car] || 0) + num(i.amount));
+      h = `<div class="kpis"><div class="kpi"><small>عدد الفواتير</small><div class="v">${all.length}</div></div>
+        <div class="kpi"><small>إجمالي المبالغ</small><div class="v">${money(tot)}</div></div></div>
+        ${Object.keys(by).length > 1 ? '<div class="card">' + Object.entries(by).map(([k, v]) => `<span class="chip">${esc(k)}: ${money(v)}</span>`).join('') + '</div>' : ''}
+        <div class="grid">${all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
+        <div>${av(i.uid)} <b>${esc(i.car)}</b>${i.veh ? ' — ' + esc(i.veh) : ''} — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('')}</div>
+        ${all.length ? '' : '<p>لا نتائج مطابقة.</p>'}`;
+    }
+    const r = $('#res'); r.innerHTML = h;
+    r.querySelectorAll('img:not(.av)').forEach(im => {
+      im.onclick = () => { if (im.src) { $('#ovi').src = im.src; $('#ov').style.display = 'flex'; } };
+      loadImg(im);
+    });
+  };
+  $('#f1').onchange = e => { F.drv = e.target.value; run(); };
+  $('#f2').onchange = e => { F.veh = e.target.value; run(); };
+  $('#f3').onchange = e => { F.from = e.target.value; run(); };
+  $('#f4').onchange = e => { F.to = e.target.value; run(); };
+  $('#f5').oninput = e => { F.q = e.target.value; run(); };
+  $('#fm').onclick = () => {
+    const d = new Date(), pad = n => String(n).padStart(2, '0'), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    F.from = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`; F.to = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(last)}`; draw();
+  };
+  $('#fc').onclick = () => { F = { drv: '', veh: '', from: '', to: '', q: '' }; draw(); };
+  run();
+}
+
+
+// ---------- تنبيهات الصيانة ----------
+let MI = [], mErr = false;
+const vkey = v => encodeURIComponent(v).replace(/\./g, '%2E');
+const PRESETS = [['تغيير زيت المحرك', 5000], ['تغيير الإطارات', 40000], ['فحص دوري', 10000], ['فلتر الهواء', 15000], ['فحص الفرامل', 20000], ['أخرى', 10000]];
+function mntVehicles() {
+  const map = {};
+  D.forEach(v => {
+    if (!v.vehicle) return;
+    const e = map[v.vehicle] || (map[v.vehicle] = { veh: v.vehicle, odo: 0, time: 0, drivers: [], items: [] });
+    if (!e.drivers.includes(v.name)) e.drivers.push(v.name);
+    v.points.forEach(p => { if (p.time >= e.time) { e.time = p.time; e.odo = p.odo; } });
+  });
+  MI.forEach(i => { (map[i.veh] || (map[i.veh] = { veh: i.veh, odo: 0, time: 0, drivers: [], items: [] })).items.push(i); });
+  return Object.values(map);
+}
+function mntState(it, odo) {
+  const rem = it.last + it.interval - odo, th = Math.min(1000, Math.max(200, it.interval * 0.1));
+  return { rem, st: rem < 0 ? 'late' : rem <= th ? 'soon' : 'ok' };
+}
+function mntAlerts() {
+  const out = [];
+  mntVehicles().forEach(v => { if (!v.odo) return; v.items.forEach(it => { const s = mntState(it, v.odo); if (s.st !== 'ok') out.push({ v, it, ...s }); }); });
+  return out.sort((a, b) => a.rem - b.rem);
+}
+function mntBanner() {
+  const a = mntAlerts(); if (!a.length) return '';
+  return `<div class="card" style="border-right:5px solid #c62828"><h3>🔧 تنبيهات الصيانة (${a.length})</h3>
+    ${a.map(x => `<div class="st-${x.st}">• ${esc(x.v.veh)} — ${esc(x.it.title)}: ${x.rem < 0 ? 'متأخرة بمقدار ' + fmt(-x.rem) + ' كم' : 'متبقي ' + fmt(x.rem) + ' كم'}</div>`).join('')}
+    <button class="p" style="margin-top:8px" onclick="tab='mnt';draw()">فتح الصيانة</button></div>`;
+}
+function drawMaint(m) {
+  const vs = mntVehicles(), carNames = [...new Set(D.map(v => v.vehicle).filter(Boolean))];
+  m.innerHTML = `${mErr ? '<div class="card msg">تعذّر قراءة بيانات الصيانة: أضف قاعدة «maintenance» إلى Rules في Firebase (انظر الشرح) ثم اضغط Publish.</div>' : ''}
+    <div class="card form"><h3>إضافة تنبيه صيانة</h3>
+      ${carNames.length ? `<select id="m1">${carNames.map(x => `<option>${esc(x)}</option>`).join('')}</select>
+      <select id="m2">${PRESETS.map((x, i) => `<option value="${i}">${x[0]}</option>`).join('')}</select>
+      <input id="m3" placeholder="اسم الصيانة" value="${PRESETS[0][0]}">
+      <input id="m4" type="number" placeholder="كل كم كيلومتر؟" value="${PRESETS[0][1]}">
+      <input id="m5" type="number" placeholder="قراءة العداد عند آخر صيانة (اتركه فارغاً = القراءة الحالية)">
+      <button class="p" id="madd">إضافة</button><div class="msg" id="mm"></div>`
+      : '<p>أسند مركبة لسائق من «إدارة السائقين» أولاً.</p>'}</div>
+    ${vs.map(v => `<div class="card"><h3>🚗 ${esc(v.veh)} <small>— ${esc(v.drivers.join('، '))}</small></h3>
+      <div>العداد الحالي: <b>${v.odo ? fmt(v.odo) + ' كم' : 'لا توجد قراءة بعد'}</b> <small>(من آخر نقطة توقف)</small></div>
+      ${v.items.length ? v.items.map(it => {
+        const s = mntState(it, v.odo), pct = Math.max(0, Math.min(100, (v.odo - it.last) / it.interval * 100));
+        const col = { ok: '#2e7d32', soon: '#ef6c00', late: '#c62828' }[s.st];
+        return `<div class="mi"><b>${esc(it.title)}</b> <small>— كل ${fmt(it.interval)} كم، آخر صيانة عند ${fmt(it.last)}${it.lastDate ? ' (' + new Date(it.lastDate).toLocaleDateString('ar') + ')' : ''}</small>
+          <div class="pg"><div style="width:${pct}%;background:${col}"></div></div>
+          <div class="st-${s.st}">${!v.odo ? '—' : s.rem < 0 ? '⚠️ متأخرة بمقدار ' + fmt(-s.rem) + ' كم' : (s.st === 'soon' ? '⏰ اقتربت: ' : '✓ ') + 'متبقي ' + fmt(s.rem) + ' كم (عند ' + fmt(it.last + it.interval) + ')'}</div>
+          <button class="p dn1" data-v="${esc(it.veh)}" data-i="${it.id}">✔ تم التنفيذ</button>
+          <button class="p r rm" data-v="${esc(it.veh)}" data-i="${it.id}">حذف</button></div>`;
+      }).join('') : '<small>لا توجد تنبيهات لهذه المركبة.</small>'}</div>`).join('')}`;
+  const say = (t, ok) => { const e = $('#mm'); if (e) { e.textContent = t; e.className = 'msg' + (ok ? ' ok' : ''); } };
+  const m2 = $('#m2'); if (m2) m2.onchange = () => { const x = PRESETS[+m2.value]; $('#m3').value = x[0]; $('#m4').value = x[1]; };
+  const add = $('#madd'); if (add) add.onclick = async () => {
+    const veh = $('#m1').value, title = $('#m3').value.trim(), interval = +$('#m4').value, lastIn = $('#m5').value;
+    const car = vs.find(x => x.veh === veh), last = lastIn === '' ? (car ? car.odo : 0) : +lastIn;
+    if (!title) return say('اكتب اسم الصيانة');
+    if (!(interval > 0)) return say('أدخل عدد الكيلومترات');
+    if (lastIn === '' && !(car && car.odo)) return say('لا توجد قراءة عداد لهذه المركبة بعد، أدخل قراءة آخر صيانة');
+    const id = Date.now();
+    try { await api('PUT', `maintenance/${vkey(veh)}/${id}`, { id, veh, title, interval, last, lastDate: Date.now() }); await poll(true); draw(); }
+    catch (e) { mErr = true; say('فشل الحفظ (' + e.message + '). تأكد من نشر قاعدة maintenance في Rules'); }
+  };
+  m.querySelectorAll('.dn1').forEach(b => b.onclick = async () => {
+    const car = vs.find(x => x.veh === b.dataset.v); if (!car || !car.odo) return alert('لا توجد قراءة عداد حالية');
+    try { const p = `maintenance/${vkey(b.dataset.v)}/${b.dataset.i}`; await api('PUT', p + '/last', car.odo); await api('PUT', p + '/lastDate', Date.now()); await poll(true); draw(); }
+    catch (e) { alert(e.message); }
+  });
+  m.querySelectorAll('.rm').forEach(b => b.onclick = async () => {
+    if (!confirm('حذف هذا التنبيه؟')) return;
+    try { await api('DELETE', `maintenance/${vkey(b.dataset.v)}/${b.dataset.i}`); await poll(true); draw(); } catch (e) { alert(e.message); }
+  });
+}
+
+
+// ---------- سجل حذف النقاط ----------
+let DL = [], dErr = false;
+const dlSeen = () => +(localStorage.getItem('dlSeen') || 0);
+const dlNew = () => DL.filter(x => x.time > dlSeen()).length;
+function badges() {
+  const a = document.querySelector('nav button[data-t=mnt]'), n = mntAlerts().length;
+  if (a) a.innerHTML = 'الصيانة' + (n ? ` <span class="nb">${n}</span>` : '');
+  const b = document.querySelector('nav button[data-t=del]'), k = dlNew();
+  if (b) b.innerHTML = 'سجل الحذف' + (k ? ` <span class="nb">${k}</span>` : '');
+}
+function delBanner() {
+  const k = dlNew(); if (!k) return '';
+  return `<div class="card" style="border-right:5px solid #c62828"><h3>🗑️ حذف نقاط (${k} جديد)</h3>
+    <div>حذف السائقون نقاطاً وأرسلوا أسباب الحذف.</div><button class="p" style="margin-top:8px" onclick="tab='del';draw()">عرض السجل</button></div>`;
+}
+function drawDel(m) {
+  const rows = [...DL].sort((a, b) => b.time - a.time), seen = dlSeen();
+  m.innerHTML = (dErr ? '<div class="card msg">تعذّر قراءة سجل الحذف: انشر قواعد Firebase المحدّثة (قاعدة deletions) ثم Publish.</div>' : '') +
+    (rows.length ? `<h3>سجل حذف النقاط (${rows.length})</h3><table><tr><th>السائق</th><th>المركبة</th><th>النقطة المحذوفة</th><th>العداد</th><th>وقت تسجيل النقطة</th><th>وقت الحذف</th><th>سبب الحذف</th></tr>
+      ${rows.map(x => { const v = D.find(d => d.uid === x.uid) || {}; return `<tr style="${x.time > seen ? 'background:#fff3e0' : ''}"><td>${av(x.uid)} ${esc(v.name || x.uid)}</td><td>${esc(v.vehicle || '')}</td><td>${esc(x.name)}</td><td>${fmt(+x.odo || 0)}</td><td>${when(x.pointTime)}</td><td>${when(x.time)}</td><td>${esc(x.reason)}</td></tr>`; }).join('')}</table>
+      <small>الصفوف المظلّلة جديدة. لا يستطيع السائق تعديل أو مسح هذه التقارير بعد إرسالها.</small>`
+      : '<p>لا توجد عمليات حذف.</p>');
+  if (rows.length) { localStorage.setItem('dlSeen', String(rows[0].time)); badges(); }
+}
+
+
+// ---------- صور السائقين ----------
+const AV = new Map();
+const av = uid => { const v = D.find(x => x.uid === uid); return v && v.photo ? `<img class="av" data-av="${esc(uid)}" data-t="${v.photo}">` : '<span class="av">👤</span>'; };
+function loadAvatars() {
+  document.querySelectorAll('img.av[data-av]:not([data-ld])').forEach(async el => {
+    el.dataset.ld = '1'; const k = el.dataset.av + '/' + el.dataset.t;
+    try {
+      if (!AV.has(k)) { const t = await api('GET', 'avatars/' + encodeURIComponent(el.dataset.av)); if (t) AV.set(k, 'data:image/jpeg;base64,' + t); }
+      if (AV.has(k)) { el.src = AV.get(k); el.onclick = () => { $('#ovi').src = el.src; $('#ov').style.display = 'flex'; }; }
+    } catch {}
+  });
+}
+
+
+// ---------- الرحلات اليومية (لكل سائق حسب الأيام) ----------
+const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const dayLabel = k => new Date(k + 'T12:00:00').toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const hm = t => new Date(t).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
+function drawTrips(m) {
+  if (!D.length) { m.innerHTML = '<p>لا توجد بيانات بعد.</p>'; return; }
+  m.innerHTML = `<div class="card"><div class="bar">
+      <select id="t1"><option value="">كل السائقين</option>${D.map(v => `<option value="${esc(v.uid)}" ${v.uid === F.drv ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
+      <label>من <input type="date" id="t2" value="${esc(F.from)}"></label><label>إلى <input type="date" id="t3" value="${esc(F.to)}"></label>
+      <button class="p" id="tt">اليوم</button><button class="p" id="tm">هذا الشهر</button><button class="p r" id="tc">مسح</button></div></div><div id="res"></div>`;
+  const run = () => {
+    const [t0, t1] = fRange(); let h = '';
+    D.filter(v => !F.drv || v.uid === F.drv).forEach(v => {
+      const days = {};
+      stats(v).rows.filter(r => r.time >= t0 && r.time <= t1).forEach(r => (days[dayKey(r.time)] ||= { pts: [], inv: [] }).pts.push(r));
+      v.invoices.filter(i => i.time >= t0 && i.time <= t1).forEach(i => (days[dayKey(i.time)] ||= { pts: [], inv: [] }).inv.push(i));
+      const keys = Object.keys(days).sort().reverse(); if (!keys.length) return;
+      const totD = keys.reduce((t, k) => t + days[k].pts.reduce((a, r) => a + r.seg, 0), 0);
+      const totE = keys.reduce((t, k) => t + days[k].inv.reduce((a, i) => a + num(i.amount), 0), 0);
+      h += `<div class="card ${v.active ? '' : 'off'}"><h3>${av(v.uid)} ${esc(v.name)} <small>— ${esc(v.vehicle || 'بدون مركبة')}</small></h3>
+        <div>أيام العمل: <b>${keys.length}</b> — المسافة: <b>${fmt(totD)} كم</b> — المصروفات: <b>${money(totE)}</b></div>
+        ${keys.map((k, idx) => {
+          const d = days[k], dist = d.pts.reduce((a, r) => a + r.seg, 0), ex = d.inv.reduce((a, i) => a + num(i.amount), 0);
+          return `<details class="day" ${idx === 0 ? 'open' : ''}><summary><span>📅 ${dayLabel(k)}</span><small>🚗 ${fmt(dist)} كم</small><small>📍 ${d.pts.length} نقطة</small><small>🧾 ${d.inv.length} فاتورة${d.inv.length ? ' (' + money(ex) + ')' : ''}</small></summary>
+            <div class="bd">${d.pts.length ? `<table><tr><th>الوقت</th><th>النقطة</th><th>العداد</th><th>المسافة من السابقة</th></tr>
+              ${d.pts.map(r => `<tr><td>${hm(r.time)}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}</td><td>${fmt(r.seg)} كم</td></tr>`).join('')}</table>` : '<small>لا توجد نقاط توقف</small>'}
+              ${d.inv.length ? `<table style="margin-top:8px"><tr><th>الوقت</th><th>الفاتورة</th><th>المبلغ</th></tr>
+              ${d.inv.sort((a, b) => a.time - b.time).map(i => `<tr><td>${hm(i.time)}</td><td>${esc(i.note)}</td><td>${esc(i.amount)}</td></tr>`).join('')}</table>` : ''}</div></details>`;
+        }).join('')}</div>`;
+    });
+    $('#res').innerHTML = h || '<p>لا توجد رحلات ضمن هذا الفلتر.</p>';
+  };
+  $('#t1').onchange = e => { F.drv = e.target.value; run(); };
+  $('#t2').onchange = e => { F.from = e.target.value; run(); };
+  $('#t3').onchange = e => { F.to = e.target.value; run(); };
+  $('#tt').onclick = () => { F.from = F.to = dayKey(Date.now()); draw(); };
+  $('#tm').onclick = () => {
+    const d = new Date(), p2 = n => String(n).padStart(2, '0'), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    F.from = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-01`; F.to = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(last)}`; draw();
+  };
+  $('#tc').onclick = () => { F.drv = F.from = F.to = ''; draw(); };
+  run();
+}
+
 // ---------- الرسم ----------
 function draw() {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  badges();
   const m = $('#m'); let h = '';
   if (tab === 'set') { drawSettings(m); return; }
   if (tab === 'drv') { drawDrivers(m); return; }
+  if (tab === 'stats') { drawStats(m); return; }
+  if (tab === 'trips') { drawTrips(m); return; }
+  if (tab === 'rep') { drawReports(m); return; }
+  if (tab === 'mnt') { drawMaint(m); return; }
+  if (tab === 'del') { drawDel(m); return; }
+  if (tab === 'det' || tab === 'inv') { drawFiltered(m, tab); return; }
   const act = D.filter(v => v.points.length || v.invoices.length || v.active);
   if (!act.length) h = '<p>لا توجد بيانات بعد. أضف سائقين من «إدارة السائقين» ثم يزامن السائق من هاتفه.</p>';
   else if (tab === 'cars') {
     h = '<div class="grid">' + act.map(v => { const s = stats(v); return `<div class="card click ${v.active ? '' : 'off'}" data-u="${esc(v.uid)}">
-      <h3>${esc(v.name)} ${v.active ? '' : '(معطّل)'}</h3><div>🚗 ${esc(v.vehicle || 'بدون مركبة')}</div>
+      <h3>${av(v.uid)} ${esc(v.name)} ${v.active ? '' : '(معطّل)'}</h3><div>🚗 ${esc(v.vehicle || 'بدون مركبة')}</div>
       <div class="big">${fmt(s.total)} كم</div>
       <div>نقاط التوقف: ${v.points.length}</div><div>الفواتير: ${v.invoices.length}</div>
       <small>آخر مزامنة: ${when(v.lastSync)}</small></div>`; }).join('') + '</div>';
@@ -131,10 +527,10 @@ function draw() {
     h = '<div class="grid">' + all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
       <div><b>${esc(i.car)}</b> — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('') + '</div>';
   }
-  m.innerHTML = h;
-  m.querySelectorAll('.card.click').forEach(c => c.onclick = () => { sel = c.dataset.u; tab = 'det'; draw(); });
+  m.innerHTML = (tab === 'cars' ? delBanner() + mntBanner() : '') + h;
+  m.querySelectorAll('.card.click').forEach(c => c.onclick = () => { F.drv = c.dataset.u; tab = 'det'; draw(); });
   const se = $('#sel'); if (se) se.onchange = () => { sel = se.value; draw(); };
-  m.querySelectorAll('img').forEach(im => {
+  m.querySelectorAll('img:not(.av)').forEach(im => {
     im.onclick = () => { if (im.src) { $('#ovi').src = im.src; $('#ov').style.display = 'flex'; } };
     loadImg(im);
   });
@@ -148,8 +544,8 @@ function drawDrivers(m) {
     <input id="d4" placeholder="رقم / اسم المركبة المخصصة">
     <button class="p" id="add">إضافة السائق</button><div class="msg" id="dm">${esc(flash)}</div></div>
     <h3>السائقون (${D.length})</h3>
-    <table><tr><th>الاسم</th><th>المستخدم</th><th>المركبة</th><th>الحالة</th><th></th></tr>
-    ${D.map(v => `<tr class="${v.active ? '' : 'off'}"><td><input data-f="n" data-u="${esc(v.uid)}" value="${esc(v.name)}"></td>
+    <table><tr><th></th><th>الاسم</th><th>المستخدم</th><th>المركبة</th><th>الحالة</th><th></th></tr>
+    ${D.map(v => `<tr class="${v.active ? '' : 'off'}"><td>${av(v.uid)}</td><td><input data-f="n" data-u="${esc(v.uid)}" value="${esc(v.name)}"></td>
       <td dir="ltr">${esc(v.username)}</td>
       <td><input data-f="v" data-u="${esc(v.uid)}" value="${esc(v.vehicle)}"></td>
       <td>${v.active ? 'مفعّل' : 'معطّل'}</td>
@@ -221,19 +617,24 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => { tab = b
 async function poll(force) {
   if (!cfg.api || !cfg.db || !localStorage.getItem('adm')) { setStatus('أدخل الإعدادات وسجّل دخول المدير'); return; }
   try {
-    const [dr, da] = await Promise.all([api('GET', 'drivers'), api('GET', 'data')]);
+    mErr = false;
+    dErr = false;
+    const [dr, da, mn, dl] = await Promise.all([api('GET', 'drivers'), api('GET', 'data'), api('GET', 'maintenance').catch(() => { mErr = true; return null; }), api('GET', 'deletions').catch(() => { dErr = true; return null; })]);
+    DL = Object.entries(dl || {}).flatMap(([uid, o]) => Object.values(o || {}).map(x => ({ ...x, uid })));
+    MI = Object.values(mn || {}).flatMap(o => Object.values(o || {})).filter(i => i && i.veh);
     setStatus('متصل ✓ ' + new Date().toLocaleTimeString('ar'));
-    const txt = JSON.stringify([dr, da]);
+    const txt = JSON.stringify([dr, da, mn, dl]);
     if (txt !== last || force) {
       last = txt;
       D = Object.entries(dr || {}).map(([uid, d]) => {
         const x = (da || {})[uid] || {};
         return { uid, name: d.name || d.username, username: d.username, vehicle: d.vehicle || '', active: d.active === true,
-          lastSync: x.lastSync, points: Object.values(x.points || {}), invoices: Object.values(x.invoices || {}) };
+          lastSync: x.lastSync, photo: x.photoTime || 0, points: Object.values(x.points || {}), invoices: Object.values(x.invoices || {}) };
       });
       if (tab !== 'set' && tab !== 'drv') draw();
     }
   } catch (e) { setStatus('خطأ: ' + e.message); }
 }
+new MutationObserver(loadAvatars).observe($('#m'), { childList: true });
 draw(); poll(); setInterval(poll, 10000);
 </script></body></html>

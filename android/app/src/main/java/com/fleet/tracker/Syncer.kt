@@ -66,6 +66,26 @@ object Syncer {
         if (d == null || !d.optBoolean("active")) throw Exception("الحساب معطّل")
         st.driverName = d.optString("name"); st.vehicle = d.optString("vehicle")
 
+        // تقارير حذف النقاط تُرسل أولاً؛ إن فشلت لا تُحدَّث النقاط عند المدير
+        for (k in 0 until st.deletions.length()) {
+            val o = st.deletions.getJSONObject(k)
+            if (o.optBoolean("up")) continue
+            val url = "$base/deletions/$uid/${o.getLong("id")}.json?auth=$token"
+            if (Cloud.call("GET", url, null).trim() == "null") {
+                val body = JSONObject(o.toString()); body.remove("up")
+                Cloud.call("PUT", url, body.toString())
+            }
+            o.put("up", true); st.save()
+        }
+
+        // صورة السائق (إن وُجدت): تُرفع مرة واحدة عند تغييرها
+        val af = st.avatarFile()
+        if (af.exists() && !st.photoUp) {
+            Cloud.call("PUT", "$base/avatars/$uid.json?auth=$token",
+                JSONObject.quote(Base64.encodeToString(af.readBytes(), Base64.NO_WRAP)))
+            st.photoUp = true
+        }
+
         val pts = JSONObject()
         for (k in 0 until st.points.length()) {
             val p = st.points.getJSONObject(k); pts.put(p.getLong("id").toString(), p)
@@ -84,7 +104,7 @@ object Syncer {
                 .put("amount", o.optString("amount")).put("time", o.getLong("time")))
         }
         val node = JSONObject().put("name", st.driverName).put("vehicle", st.vehicle)
-            .put("lastSync", System.currentTimeMillis()).put("points", pts).put("invoices", invs)
+            .put("lastSync", System.currentTimeMillis()).put("photoTime", if (af.exists()) st.photoTime else 0L).put("points", pts).put("invoices", invs)
         Cloud.call("PUT", "$base/data/$uid.json?auth=$token", node.toString())
     }
 

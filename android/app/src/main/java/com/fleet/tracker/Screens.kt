@@ -48,6 +48,24 @@ private fun confirm(c: Context, msg: String, ok: () -> Unit) {
         .setNegativeButton("إلغاء", null).show()
 }
 
+/** حذف نقطة يتطلب سبباً إجبارياً، ويُرسل تقرير بالحذف للمدير */
+private fun askReason(c: Context, title: String, ok: (String) -> Unit) {
+    val et = EditText(c).apply { hint = "سبب الحذف (إجباري)"; minLines = 2 }
+    val box = FrameLayout(c).apply { setPadding(c.dp(20), c.dp(8), c.dp(20), 0); addView(et) }
+    val d = AlertDialog.Builder(c).setTitle(title)
+        .setMessage("سيُرسل تقرير بسبب الحذف إلى المدير.")
+        .setView(box)
+        .setPositiveButton("حذف وإرسال التقرير", null)
+        .setNegativeButton("إلغاء", null).create()
+    d.setOnShowListener {
+        d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val r = et.text.toString().trim()
+            if (r.length < 3) et.error = "اكتب سبب الحذف" else { d.dismiss(); ok(r) }
+        }
+    }
+    d.show()
+}
+
 // ---------- تبويب الرحلة ----------
 class TripFragment : Fragment() {
     override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
@@ -67,7 +85,9 @@ class TripFragment : Fragment() {
                 val extra = if (idx > 0) "  (+${fmt(seg)} كم)" else ""
                 list.addView(ctx.label("${idx + 1}. ${p.getString("name")} — ${fmt(p.getDouble("odo"))}$extra\n${timeStr(p.getLong("time"))}", 15f).apply {
                     setOnLongClickListener {
-                        confirm(ctx, "حذف هذه النقطة؟") { st.delPoint(p.getLong("id")); render(); Syncer.auto(ctx, st) }
+                        askReason(ctx, "حذف النقطة: ${p.getString("name")}") { reason ->
+                            st.delPoint(p.getLong("id"), reason); render(); Syncer.auto(ctx, st)
+                        }
                         true
                     }
                 })
@@ -89,7 +109,7 @@ class TripFragment : Fragment() {
                 }
             })
             addView(summary); addView(list)
-            addView(ctx.label("(اضغط مطولاً على نقطة لحذفها)", 12f))
+            addView(ctx.label("(اضغط مطولاً على نقطة لحذفها: يلزم كتابة السبب ويُرسل تقرير للمدير)", 12f))
         }
         render()
         return root
@@ -172,6 +192,43 @@ class InvoiceFragment : Fragment() {
 
 // ---------- تبويب الحساب والمزامنة ----------
 class SyncFragment : Fragment() {
+    private var tmp: File? = null
+    private val cam = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        if (ok) tmp?.let { setAvatar(it) }
+    }
+    private val gal = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val f = File(store().invDir(), "avatar_tmp.jpg")
+            requireContext().contentResolver.openInputStream(uri)?.use { inp -> f.outputStream().use { inp.copyTo(it) } }
+            setAvatar(f)
+        }
+    }
+
+    /** تصغير الصورة إلى مربع 256 بكسل وحفظها كصورة للسائق ثم مزامنتها */
+    private fun setAvatar(src: File) {
+        val st = store()
+        val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(src.path, b)
+        var s = 1
+        while (minOf(b.outWidth, b.outHeight) / (s * 2) >= 256) s *= 2
+        var bm = BitmapFactory.decodeFile(src.path, BitmapFactory.Options().apply { inSampleSize = s }) ?: return
+        val deg = when (ExifInterface(src.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1)) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        if (deg != 0f) bm = Bitmap.createBitmap(bm, 0, 0, bm.width, bm.height, Matrix().apply { postRotate(deg) }, true)
+        val side = minOf(bm.width, bm.height)
+        bm = Bitmap.createBitmap(bm, (bm.width - side) / 2, (bm.height - side) / 2, side, side)
+        bm = Bitmap.createScaledBitmap(bm, 256, 256, true)
+        st.avatarFile().outputStream().use { bm.compress(Bitmap.CompressFormat.JPEG, 80, it) }
+        src.delete()
+        st.photoTime = System.currentTimeMillis(); st.photoUp = false
+        Syncer.auto(requireContext(), st)
+        reload()
+    }
+
     override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext(); val st = store()
         return if (st.configured()) loggedIn(ctx, st) else loginForm(ctx, st)
@@ -241,6 +298,17 @@ class SyncFragment : Fragment() {
         val status = ctx.label("", 15f)
         return ctx.page {
             addView(ctx.label("الحساب", 20f, true))
+            val af = st.avatarFile()
+            if (af.exists()) addView(ImageView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ctx.dp(96), ctx.dp(96))
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                setImageBitmap(BitmapFactory.decodeFile(af.path))
+            })
+            addView(ctx.btn("📷 التقاط صورتي") {
+                val f = File(st.invDir(), "avatar_tmp.jpg"); tmp = f
+                cam.launch(FileProvider.getUriForFile(ctx, "com.fleet.tracker.provider", f))
+            })
+            addView(ctx.btn("🖼 اختيار صورتي من المعرض") { gal.launch("image/*") })
             addView(ctx.label("السائق: ${st.driverName}", 17f))
             addView(ctx.label("المركبة: ${st.vehicle.ifEmpty { "غير محددة" }}", 17f))
             addView(ctx.label("اسم المستخدم: ${st.username}", 15f))

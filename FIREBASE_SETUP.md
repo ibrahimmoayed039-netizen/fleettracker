@@ -11,7 +11,9 @@
     "drivers": {
       ".read": "auth.token.email === 'admin@fleet.local'",
       ".write": "auth.token.email === 'admin@fleet.local'",
-      "$uid": { ".read": "auth.uid === $uid" }
+      "$uid": {
+        ".read": "auth.uid === $uid"
+      }
     },
     "data": {
       ".read": "auth.token.email === 'admin@fleet.local'",
@@ -22,6 +24,28 @@
       }
     },
     "images": {
+      ".read": "auth.token.email === 'admin@fleet.local'",
+      ".write": "auth.token.email === 'admin@fleet.local'",
+      "$uid": {
+        ".read": "auth.uid === $uid",
+        ".write": "auth.uid === $uid && root.child('drivers').child($uid).child('active').val() === true"
+      }
+    },
+    "maintenance": {
+      ".read": "auth.token.email === 'admin@fleet.local'",
+      ".write": "auth.token.email === 'admin@fleet.local'"
+    },
+    "deletions": {
+      ".read": "auth.token.email === 'admin@fleet.local'",
+      ".write": "auth.token.email === 'admin@fleet.local'",
+      "$uid": {
+        ".read": "auth.uid === $uid",
+        "$id": {
+          ".write": "auth.uid === $uid && !data.exists() && root.child('drivers').child($uid).child('active').val() === true"
+        }
+      }
+    },
+    "avatars": {
       ".read": "auth.token.email === 'admin@fleet.local'",
       ".write": "auth.token.email === 'admin@fleet.local'",
       "$uid": {
