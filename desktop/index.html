@@ -133,14 +133,129 @@ details.day{box-shadow:0 2px 0 #fff inset,0 8px 16px -8px #0a3d2455}
   thead{display:table-header-group}
 }
 body.pdfmode .pth,body.pdfmode .ptf{display:none!important}
-</style></head><body>
+
+/* ===== شاشة دخول المدير ===== */
+#gate{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;overflow:auto;padding:24px;box-sizing:border-box;
+  background:radial-gradient(900px 520px at 12% 8%,#1b9a5c 0,transparent 60%),radial-gradient(820px 520px at 92% 96%,#0f7443 0,transparent 60%),linear-gradient(135deg,#052619,#0a3d24 52%,#04301b)}
+body.locked #gate{display:flex}
+body.locked>:not(#gate){display:none!important}
+#gate .gbg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#gate .gbg i{position:absolute;border-radius:50%;filter:blur(2px);background:radial-gradient(circle at 30% 30%,#ffffff26,#ffffff05 70%);animation:gfloat 16s ease-in-out infinite}
+#gate .gbg i:nth-child(1){width:340px;height:340px;top:-90px;left:-70px}
+#gate .gbg i:nth-child(2){width:230px;height:230px;bottom:-60px;right:8%;animation-delay:-5s}
+#gate .gbg i:nth-child(3){width:140px;height:140px;top:22%;right:-40px;animation-delay:-9s}
+@keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-26px)}}
+#gate .gcard{position:relative;width:min(430px,94vw);box-sizing:border-box;padding:34px 34px 24px;border-radius:22px;text-align:center;
+  background:linear-gradient(180deg,#fff,#f4f9f6);box-shadow:0 30px 60px -16px #000a,0 0 0 1px #ffffff55,inset 0 1px 0 #fff;animation:gin .55s cubic-bezier(.2,.8,.2,1)}
+#gate .gcard::before{content:"";position:absolute;top:0;right:26px;left:26px;height:5px;border-radius:0 0 8px 8px;background:linear-gradient(90deg,#05643a,#1ac56d,#05643a)}
+@keyframes gin{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+#gate .gcard.shake{animation:gshake .45s}
+@keyframes gshake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+#gate .glogo{width:96px;height:96px;margin:6px auto 12px;border-radius:50%;padding:5px;box-sizing:border-box;background:radial-gradient(circle at 30% 25%,#fff,#e6eee9);
+  box-shadow:0 12px 22px -6px #05301c99,0 0 0 4px #0a8f4b33,inset 0 -6px 10px #0002}
+#gate .glogo img{width:100%;height:100%;min-height:0;border-radius:50%;cursor:default;display:block}
+#gate h1{margin:0;font-size:27px;letter-spacing:.6px;color:#05643a;direction:ltr}
+#gate .gsub{margin:4px 0 0;color:#5b6f64;font-size:13px}
+#gate .gdiv{display:flex;align-items:center;gap:10px;margin:20px 0 16px;color:#05643a;font-weight:700;font-size:15px}
+#gate .gdiv::before,#gate .gdiv::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#b9d3c5,transparent)}
+#gate label{display:block;text-align:right;font-size:13px;font-weight:600;color:#2c3e34;margin:0 2px 6px}
+#gate .gfield{position:relative;margin-bottom:14px}
+#gate .gfield input{width:100%;box-sizing:border-box;margin:0;height:50px;padding:0 46px 0 48px;font-size:16px;border-radius:12px;border:1.5px solid #c3d3c9;background:#fbfdfc;color:var(--ink);
+  box-shadow:inset 0 2px 5px #0a3d2420;outline:0;transition:border-color .15s,box-shadow .15s}
+#gate .gfield input:focus{border-color:#0a8f4b;box-shadow:inset 0 2px 5px #0a3d2420,0 0 0 4px #0a8f4b2e}
+#gate .gfield input.ltr{direction:ltr;text-align:left;padding:0 14px;font-size:14px}
+#gate .gfield .ic{position:absolute;top:50%;right:15px;transform:translateY(-50%);width:20px;height:20px;color:#0a8f4b;pointer-events:none}
+#gate .eye{position:absolute;top:50%;left:8px;transform:translateY(-50%);width:36px;height:36px;border:0;background:none;border-radius:9px;cursor:pointer;color:#6b8076;display:flex;align-items:center;justify-content:center}
+#gate .eye:hover{background:#0a8f4b14;color:#05643a}
+#gate .eye svg{width:20px;height:20px}
+#gate .gcaps{display:flex;align-items:center;gap:6px;margin:-4px 0 10px;font-size:12.5px;color:#a15c00;background:#fff4e0;border-radius:8px;padding:6px 10px}
+#gate .gerr{min-height:20px;margin:0 0 10px;font-size:13.5px;font-weight:600;color:#c62828}
+#gate .gbtn{width:100%;height:52px;border:0;border-radius:13px;cursor:pointer;font:700 17px 'Segoe UI',Tahoma,sans-serif;color:#fff;position:relative;top:0;
+  display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(#1ac56d,#0a8f4b 58%,#07743c);text-shadow:0 1px 2px #0004;
+  box-shadow:0 5px 0 #05643a,0 12px 18px #0a3d2440,inset 0 1px 0 #ffffff66;transition:top .08s,box-shadow .08s,filter .15s}
+#gate .gbtn:hover{filter:brightness(1.07)}
+#gate .gbtn:active{top:4px;box-shadow:0 1px 0 #05643a,0 4px 6px #0a3d2440}
+#gate .gbtn:disabled{cursor:not-allowed;filter:grayscale(.45) brightness(.95)}
+#gate .gbtn .spin{display:none;width:18px;height:18px;border-radius:50%;border:3px solid #ffffff55;border-top-color:#fff;animation:gspin .7s linear infinite}
+#gate .gbtn.busy .spin{display:block}
+@keyframes gspin{to{transform:rotate(360deg)}}
+#gate .glinks{display:flex;justify-content:space-between;gap:10px;margin-top:18px;font-size:13px}
+#gate .glinks a{color:#0a8f4b;cursor:pointer;font-weight:600;text-decoration:none}
+#gate .glinks a:hover{text-decoration:underline;color:#05643a}
+#gate .gcfg{background:#eef6f1;border-radius:12px;padding:12px 12px 2px;margin-bottom:14px;text-align:right}
+#gate .gcfg small{display:block;color:#5b6f64;margin:-2px 0 10px;font-size:12px}
+#gate .gfoot{position:relative;margin-top:20px;color:#ffffffb3;font-size:12px;text-align:center;text-shadow:0 1px 2px #0006}
+#gate [hidden]{display:none!important}
+.lockbtn{border:0;border-radius:20px;padding:6px 16px;font:600 13px 'Segoe UI',Tahoma,sans-serif;color:#fff;cursor:pointer;background:#ffffff26;box-shadow:inset 0 1px 0 #ffffff40,0 2px 5px #0004;transition:background .15s}
+.lockbtn:hover{background:#ffffff3d}
+header.top .hr{display:flex;align-items:center;gap:12px}
+
+.tabsel{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin:10px 0 12px}
+.tabsel label{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:#f1f6f3;border:1px solid #d5e3db;cursor:pointer;font-weight:600;color:#2c3e34;user-select:none}
+.tabsel label:hover{background:#e6f3ec}
+.tabsel input{width:18px;height:18px;margin:0;padding:0;accent-color:#0a8f4b;box-shadow:none;cursor:pointer}
+.tabsel label.fixed{opacity:.6;cursor:not-allowed}
+.tabsel label.fixed input{cursor:not-allowed}
+
+.selbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border-radius:12px;padding:10px 14px;margin:0 0 12px;box-shadow:0 2px 0 #fff inset,0 8px 16px -10px #0a3d2466;border-right:5px solid #0a8f4b}
+.selbar label{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;user-select:none}
+.selbar .selcnt{color:#5b6f64;font-size:13px}
+.selbar button{margin:0 auto 0 0}
+.selbar button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
+input.sel,input.selall{width:20px;height:20px;margin:0;padding:0;accent-color:#c62828;cursor:pointer;box-shadow:none;flex:none}
+.card.pk{outline:3px solid #c62828;outline-offset:-3px;background:linear-gradient(180deg,#fff5f5,#fdeaea)}
+tr.pk>td{background:#fdeaea!important}
+.selpos{position:absolute;top:10px;left:10px;z-index:2;background:#fff;border-radius:8px;padding:5px;box-shadow:0 2px 6px #0004;display:flex}
+
+#dlg{display:none;position:fixed;inset:0;z-index:10000;background:#05140ccc;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;backdrop-filter:blur(3px)}
+#dlg.on{display:flex}
+#dlg .db{width:min(440px,94vw);background:linear-gradient(180deg,#fff,#f4f9f6);border-radius:18px;padding:24px 24px 18px;box-shadow:0 30px 60px -14px #000a,0 0 0 1px #ffffff55;animation:gin .25s ease-out;border-top:5px solid #0a8f4b}
+#dlg .db.danger{border-top-color:#c62828}
+#dlg .dm{white-space:pre-line;line-height:1.8;font-size:16px;color:#10241a;margin:0 0 18px}
+#dlg .dbt{display:flex;gap:10px;justify-content:flex-start}
+#dlg .dbt button{margin:0;min-width:110px}
+#dlg .dbt .cn{background:linear-gradient(#fff,#e9efeb);color:#2c3e34;text-shadow:none;box-shadow:0 4px 0 #c5d3ca,0 9px 14px #0a3d2420,inset 0 1px 0 #fff}
+</style></head><body class="locked">
+<div id="gate">
+  <div class="gbg"><i></i><i></i><i></i></div>
+  <div class="gcard" id="gcard">
+    <div class="glogo"><img src="assets/logo.png" alt="Agrimatco"></div>
+    <h1>Agrimatco - Fleet</h1>
+    <p class="gsub">نظام متابعة المركبات والسائقين</p>
+    <div class="gdiv"><span id="gtitle">تسجيل دخول المدير</span></div>
+
+    <div class="gcfg" id="gcfgBox" hidden>
+      <small>بيانات الاتصال بقاعدة البيانات (تُدخل مرة واحدة فقط)</small>
+      <label for="gapi">Web API Key</label>
+      <div class="gfield"><input id="gapi" class="ltr" autocomplete="off" spellcheck="false"></div>
+      <label for="gdb">رابط قاعدة البيانات</label>
+      <div class="gfield"><input id="gdb" class="ltr" autocomplete="off" spellcheck="false" placeholder="https://xxxx.firebasedatabase.app"></div>
+    </div>
+
+    <label for="gpw">كلمة مرور المدير</label>
+    <div class="gfield"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <input id="gpw" type="password" autocomplete="current-password" placeholder="أدخل كلمة المرور">
+      <button type="button" class="eye" id="geye" title="إظهار / إخفاء"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </div>
+    <div id="gpw2wrap" hidden>
+      <label for="gpw2">تأكيد كلمة المرور</label>
+      <div class="gfield"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><input id="gpw2" type="password" autocomplete="new-password" placeholder="أعد كتابة كلمة المرور"></div>
+    </div>
+    <div class="gcaps" id="gcaps" hidden>⚠ زر Caps Lock مفعّل</div>
+    <div class="gerr" id="gerr" role="alert"></div>
+    <button type="button" class="gbtn" id="gbtn"><i class="spin"></i><span id="gbtnTxt">دخول</span></button>
+    <div class="glinks"><a id="glCfg">⚙ إعدادات الاتصال</a><a id="glNew">أول استخدام؟ إنشاء حساب المدير</a></div>
+  </div>
+  <div class="gfoot">© Agrimatco — جميع الحقوق محفوظة &nbsp;|&nbsp; v1.2.0</div>
+</div>
+
 <div class="pmark"><img src="assets/logo.png" alt=""></div>
 <header class="top">
   <div class="brand">
     <div class="logo3d"><img src="assets/logo.png" alt="Agrimatco"></div>
     <div><h1>Agrimatco - Fleet</h1><small>نظام متابعة المركبات والسائقين</small></div>
   </div>
-  <small id="st"></small>
+  <div class="hr"><small id="st"></small><button type="button" class="lockbtn" id="lk">🔒 تسجيل الخروج</button></div>
 </header>
 <nav>
   <button data-t="now" class="on">اليوم الآن</button>
@@ -166,8 +281,47 @@ const ADMIN = 'admin@fleet.local';
 let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('cfg') || '{}'); } catch {}
 let D = [], sel = '', last = '', tok = null, tokExp = 0, flash = '';
 let tab = (cfg.api && cfg.db && localStorage.getItem('adm')) ? 'now' : 'set';
+let locked = true; // البرنامج مقفل حتى يدخل المدير كلمة المرور
+// التبويبات: المدير يختار ما يظهر منها (من الإعدادات). «الإعدادات» تبقى ظاهرة دائماً.
+const TABS = [['now', 'اليوم الآن'], ['cars', 'السائقون'], ['stats', 'الإحصائيات'], ['trips', 'الرحلات اليومية'], ['mnt', 'الصيانة'],
+  ['del', 'الحذف والتصحيح'], ['rep', 'التقارير'], ['det', 'التفاصيل'], ['inv', 'الفواتير'], ['drv', 'إدارة السائقين']];
+let hiddenTabs = []; try { hiddenTabs = JSON.parse(localStorage.getItem('hiddenTabs') || '[]').filter(t => TABS.some(x => x[0] === t)); } catch {}
+function applyTabs() {
+  document.querySelectorAll('nav button').forEach(b => { b.style.display = hiddenTabs.includes(b.dataset.t) ? 'none' : ''; });
+  if (tab !== 'set' && hiddenTabs.includes(tab)) { const f = TABS.find(x => !hiddenTabs.includes(x[0])); tab = f ? f[0] : 'set'; }
+}
 const imgs = new Map();
 const $ = s => document.querySelector(s);
+// ---------- نوافذ التأكيد والتنبيه داخل البرنامج (بدل نوافذ النظام التي تجمّد حقول الإدخال في Electron) ----------
+function dlgOpen(msg, okTxt, cancelTxt, danger) {
+  return new Promise(res => {
+    let box = document.getElementById('dlg');
+    if (!box) { box = document.createElement('div'); box.id = 'dlg'; document.body.appendChild(box); }
+    const prev = document.activeElement;
+    box.innerHTML = `<div class="db ${danger ? 'danger' : ''}" role="dialog" aria-modal="true"><p class="dm"></p><div class="dbt"><button type="button" class="p ${danger ? 'r' : ''}" id="dok"></button>${cancelTxt ? '<button type="button" class="p cn" id="dcn"></button>' : ''}</div></div>`;
+    box.querySelector('.dm').textContent = msg;
+    box.querySelector('#dok').textContent = okTxt;
+    if (cancelTxt) box.querySelector('#dcn').textContent = cancelTxt;
+    const done = v => {
+      document.removeEventListener('keydown', key, true);
+      box.classList.remove('on'); box.innerHTML = '';
+      try { if (prev && prev.focus && document.body.contains(prev)) prev.focus(); } catch {}
+      res(v);
+    };
+    const key = e => {
+      if (e.key === 'Escape') { e.preventDefault(); done(false); }
+      else if (e.key === 'Enter' && e.target.id !== 'dcn') { e.preventDefault(); done(true); }
+    };
+    document.addEventListener('keydown', key, true);
+    box.querySelector('#dok').onclick = () => done(true);
+    const cn = box.querySelector('#dcn'); if (cn) cn.onclick = () => done(false);
+    box.classList.add('on');
+    setTimeout(() => (cn || box.querySelector('#dok')).focus(), 30);
+  });
+}
+const askConfirm = (msg, okTxt = 'تأكيد', danger = true) => dlgOpen(msg, okTxt, 'إلغاء', danger);
+const showMsg = msg => dlgOpen(msg, 'حسناً', '', false);
+
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
 const when = t => t ? new Date(t).toLocaleString('ar') : '-';
@@ -179,7 +333,9 @@ const tr = m => ({
   INVALID_PASSWORD: 'كلمة المرور غير صحيحة',
   EMAIL_NOT_FOUND: 'حساب المدير غير موجود، اضغط «إنشاء حساب المدير»',
   OPERATION_NOT_ALLOWED: 'فعّل Email/Password في Firebase Authentication',
-  WEAK_PASSWORD: 'كلمة المرور ضعيفة (6 أحرف على الأقل)'
+  WEAK_PASSWORD: 'كلمة المرور ضعيفة (6 أحرف على الأقل)',
+  TOO_MANY_ATTEMPTS_TRY_LATER: 'محاولات كثيرة، حاول بعد قليل',
+  USER_DISABLED: 'تم تعطيل هذا الحساب'
 }[String(m).split(' ')[0]] || m);
 
 // ---------- Firebase Auth (REST) ----------
@@ -229,13 +385,16 @@ const edTag = r => { const l = edLog(r); return l.length ? ` <span title="${esc(
 const stopDur = r => r.kind === 'stop' ? (r.leave ? dur(r.leave - r.time) : 'لم يغادر بعد') : '';
 function tripsTbl(v) {
   if (!(v.trips || []).length) return '';
-  return `<h3>الرحلات (${v.trips.length})</h3><table><tr><th>البداية</th><th>النهاية</th><th>مدة الرحلة</th><th>المسافة</th><th>التوقفات</th><th>مجموع وقت التوقف</th><th class="noprint">حذف</th></tr>
+  return `<h3>الرحلات (${v.trips.length})</h3><div class="selscope" data-k="trip">
+    <div class="selbar noprint"><label><input type="checkbox" class="selall"> تحديد الكل</label><span class="selcnt">لم يُحدَّد شيء</span>
+      <button type="button" class="p r selbtn" disabled>🗑 حذف المحدد</button></div>
+    <table><tr><th>البداية</th><th>النهاية</th><th>مدة الرحلة</th><th>المسافة</th><th>التوقفات</th><th>مجموع وقت التوقف</th><th class="noprint">اختيار</th></tr>
     ${[...v.trips].sort((a, b) => b.startTime - a.startTime).map(t => {
       const ps = v.points.filter(p => p.tripId === t.id), stops = ps.filter(p => p.kind === 'stop'), end = t.endTime || 0;
       const odo = end ? t.endOdo : Math.max(t.startOdo, ...ps.map(p => p.odo));
       const stopMs = stops.reduce((a, p) => a + ((p.leave || end || Date.now()) - p.time), 0);
-      return `<tr><td>${when(t.startTime)}</td><td>${end ? when(end) : '<b>جارية</b>'}</td><td>${dur((end || Date.now()) - t.startTime)}</td><td>${fmt(odo - t.startOdo)} كم</td><td>${stops.length}</td><td>${dur(stopMs)}</td><td class="noprint"><button class="p r tdel" data-u="${esc(v.uid)}" data-t="${t.id}">🗑 حذف</button></td></tr>`;
-    }).join('')}</table>`;
+      return `<tr><td>${when(t.startTime)}</td><td>${end ? when(end) : '<b>جارية</b>'}</td><td>${dur((end || Date.now()) - t.startTime)}</td><td>${fmt(odo - t.startOdo)} كم</td><td>${stops.length}</td><td>${dur(stopMs)}</td><td class="noprint"><input type="checkbox" class="sel" data-k="trip" data-u="${esc(v.uid)}" data-i="${t.id}"></td></tr>`;
+    }).join('')}</table></div>`;
 }
 async function loadImg(el) {
   const k = el.dataset.v + '/' + el.dataset.id;
@@ -419,8 +578,10 @@ function drawFiltered(m, kind) {
       h = `<div class="kpis"><div class="kpi"><small>عدد الفواتير</small><div class="v">${all.length}</div></div>
         <div class="kpi"><small>إجمالي المبالغ</small><div class="v">${money(tot)}</div></div></div>
         ${Object.keys(by).length > 1 ? '<div class="card">' + Object.entries(by).map(([k, v]) => `<span class="chip">${esc(k)}: ${money(v)}</span>`).join('') + '</div>' : ''}
-        <div class="grid">${all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
-        <div>${av(i.uid)} <b>${esc(i.car)}</b>${i.veh ? ' — ' + esc(i.veh) : ''} — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('')}</div>
+        ${all.length ? `<div class="selscope" data-k="inv"><div class="selbar noprint"><label><input type="checkbox" class="selall"> تحديد الكل (${all.length})</label><span class="selcnt">لم يُحدَّد شيء</span>
+          <button type="button" class="p r selbtn" disabled>🗑 حذف المحدد</button></div>` : ''}
+        <div class="grid">${all.map(i => `<div class="card" style="position:relative"><label class="selpos noprint"><input type="checkbox" class="sel" data-k="inv" data-u="${esc(i.uid)}" data-i="${i.id}"></label><img data-v="${esc(i.uid)}" data-id="${i.id}">
+        <div>${av(i.uid)} <b>${esc(i.car)}</b>${i.veh ? ' — ' + esc(i.veh) : ''} — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('')}</div>${all.length ? '</div>' : ''}
         ${all.length ? '' : '<p>لا نتائج مطابقة.</p>'}`;
     }
     const r = $('#res'); r.innerHTML = h;
@@ -508,13 +669,13 @@ function drawMaint(m) {
     catch (e) { mErr = true; say('فشل الحفظ (' + e.message + '). تأكد من نشر قاعدة maintenance في Rules'); }
   };
   m.querySelectorAll('.dn1').forEach(b => b.onclick = async () => {
-    const car = vs.find(x => x.veh === b.dataset.v); if (!car || !car.odo) return alert('لا توجد قراءة عداد حالية');
+    const car = vs.find(x => x.veh === b.dataset.v); if (!car || !car.odo) return showMsg('لا توجد قراءة عداد حالية');
     try { const p = `maintenance/${vkey(b.dataset.v)}/${b.dataset.i}`; await api('PUT', p + '/last', car.odo); await api('PUT', p + '/lastDate', Date.now()); await poll(true); draw(); }
-    catch (e) { alert(e.message); }
+    catch (e) { showMsg(e.message); }
   });
   m.querySelectorAll('.rm').forEach(b => b.onclick = async () => {
-    if (!confirm('حذف هذا التنبيه؟')) return;
-    try { await api('DELETE', `maintenance/${vkey(b.dataset.v)}/${b.dataset.i}`); await poll(true); draw(); } catch (e) { alert(e.message); }
+    if (!await askConfirm('حذف هذا التنبيه؟', 'حذف')) return;
+    try { await api('DELETE', `maintenance/${vkey(b.dataset.v)}/${b.dataset.i}`); await poll(true); draw(); } catch (e) { showMsg(e.message); }
   });
 }
 
@@ -671,6 +832,7 @@ setInterval(() => { if (tab === 'now') draw(); }, 30000);
 
 // ---------- الرسم ----------
 function draw() {
+  applyTabs();
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   badges();
   const m = $('#m'); let h = '';
@@ -772,7 +934,13 @@ function drawSettings(m) {
       <div class="msg" id="sm"></div></div>
     ${code ? `<div class="card"><h3>3) كود الإعداد للسائقين</h3>
       <input id="c4" readonly value="${esc(code)}" dir="ltr"><button class="p" id="cp">نسخ</button>
-      <small>يُلصق مرة واحدة في تطبيق السائق. غير مطلوب إذا أضفت google-services.json إلى التطبيق.</small></div>` : ''}</div>`;
+      <small>يُلصق مرة واحدة في تطبيق السائق. غير مطلوب إذا أضفت google-services.json إلى التطبيق.</small></div>` : ''}
+    <div class="card"><h3>${code ? '4' : '3'}) التبويبات الظاهرة في البرنامج</h3>
+      <small>أزل العلامة عن أي تبويب لإخفائه من الشريط العلوي. «الإعدادات» تبقى ظاهرة دائماً.</small>
+      <div class="tabsel">${TABS.map(([k, l]) => `<label><input type="checkbox" data-tb="${k}" ${hiddenTabs.includes(k) ? '' : 'checked'}> ${l}</label>`).join('')}
+        <label class="fixed"><input type="checkbox" checked disabled> الإعدادات</label></div>
+      <button class="p" id="tball">إظهار الكل</button>
+      <div class="msg" id="tbm"></div></div></div>`;
   const say = (t, ok) => { const e = $('#sm'); e.textContent = t; e.className = 'msg' + (ok ? ' ok' : ''); };
   $('#sv').onclick = () => {
     cfg = { api: $('#c1').value.trim(), db: $('#c2').value.trim() };
@@ -787,12 +955,21 @@ function drawSettings(m) {
   };
   $('#li').onclick = () => go('signInWithPassword');
   $('#cr').onclick = () => go('signUp');
-  const lo = $('#lo'); if (lo) lo.onclick = () => { localStorage.removeItem('adm'); tok = null; D = []; draw(); };
+  const lo = $('#lo'); if (lo) lo.onclick = () => lock();
+  const tbSave = () => { localStorage.setItem('hiddenTabs', JSON.stringify(hiddenTabs)); applyTabs(); };
+  m.querySelectorAll('input[data-tb]').forEach(c => c.onchange = () => {
+    const k = c.dataset.tb;
+    if (!c.checked && TABS.filter(x => !hiddenTabs.includes(x[0]) && x[0] !== k).length === 0) { c.checked = true; const e = $('#tbm'); e.textContent = 'أبقِ تبويباً واحداً على الأقل ظاهراً'; return; }
+    hiddenTabs = c.checked ? hiddenTabs.filter(t => t !== k) : [...hiddenTabs, k];
+    $('#tbm').textContent = ''; tbSave();
+  });
+  $('#tball').onclick = () => { hiddenTabs = []; tbSave(); m.querySelectorAll('input[data-tb]').forEach(c => c.checked = true); };
   const cp = $('#cp'); if (cp) cp.onclick = () => { navigator.clipboard.writeText(code); cp.textContent = 'تم النسخ ✓'; };
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => { tab = b.dataset.t; draw(); });
 
 async function poll(force) {
+  if (locked) return;
   if (!cfg.api || !cfg.db || !localStorage.getItem('adm')) { setStatus('أدخل الإعدادات وسجّل دخول المدير'); return; }
   try {
     mErr = false;
@@ -809,30 +986,150 @@ async function poll(force) {
         return { uid, name: d.name || d.username, username: d.username, vehicle: d.vehicle || '', active: d.active === true,
           lastSync: x.lastSync, photo: x.photoTime || 0, points: Object.values(x.points || {}), trips: Object.values(x.trips || {}), profile: x.profile || {}, invoices: Object.values(x.invoices || {}) };
       });
-      if (tab !== 'set' && tab !== 'drv') draw();
+      if (tab !== 'set' && tab !== 'drv' && !document.querySelector('input.sel:checked')) draw();
     }
   } catch (e) { setStatus('خطأ: ' + e.message); }
 }
 new MutationObserver(loadAvatars).observe($('#m'), { childList: true });
 
-// ---------- حذف رحلة (المدير): علامة حذف للهاتف + إزالة الرحلة ونقاطها من قاعدة البيانات ----------
-document.addEventListener('click', async e => {
-  const b = e.target.closest('.tdel'); if (!b) return;
-  const v = D.find(x => x.uid === b.dataset.u), id = b.dataset.t;
-  const t = v && v.trips.find(x => String(x.id) === id); if (!t) return;
-  const pts = v.points.filter(p => String(p.tripId) === id);
-  if (!confirm(`حذف رحلة ${v.name} (${when(t.startTime)})؟\nستُحذف معها ${pts.length} نقطة نهائياً من البرنامج ومن هاتف السائق، ولا يمكن التراجع.`)) return;
-  b.disabled = true;
-  try {
-    await api('PUT', `removed/${v.uid}/${id}`, { id: Number(id), time: Date.now() }); // أولاً: كي لا تعود من هاتف السائق
-    for (const p of pts) await api('DELETE', `data/${v.uid}/points/${p.id}`);
-    await api('DELETE', `data/${v.uid}/trips/${id}`);
-    await poll(true); draw();
-  } catch (err) {
-    alert('تعذّر الحذف: ' + err.message + '\nتأكد من لصق قواعد Firebase الجديدة (قسم removed) ثم Publish.');
-    b.disabled = false;
-  }
+// ---------- حذف محدد (فواتير / رحلات): المدير يختار ما يريد حذفه ----------
+// الترتيب مهم: أولاً علامة «removed» كي لا يعيد الهاتف رفع العنصر، ثم الحذف من قاعدة البيانات
+const selScope = el => el.closest('.selscope');
+function selRefresh(sc) {
+  const all = [...sc.querySelectorAll('input.sel')], on = all.filter(c => c.checked), n = on.length;
+  all.forEach(c => { const host = c.closest('tr') || c.closest('.card'); if (host) host.classList.toggle('pk', c.checked); });
+  const sa = sc.querySelector('input.selall'); if (sa) { sa.checked = n > 0 && n === all.length; sa.indeterminate = n > 0 && n < all.length; }
+  sc.querySelector('.selcnt').textContent = n ? `محدد: ${n} من ${all.length}` : 'لم يُحدَّد شيء';
+  const bt = sc.querySelector('.selbtn'); bt.disabled = !n; bt.textContent = n ? `🗑 حذف المحدد (${n})` : '🗑 حذف المحدد';
+}
+document.addEventListener('change', e => {
+  const c = e.target; if (!(c instanceof HTMLInputElement)) return;
+  const sc = selScope(c); if (!sc) return;
+  if (c.classList.contains('selall')) sc.querySelectorAll('input.sel').forEach(x => x.checked = c.checked);
+  else if (!c.classList.contains('sel')) return;
+  selRefresh(sc);
 });
+async function delOne(kind, uid, id) {
+  const now = Date.now();
+  if (kind === 'inv') {
+    await api('PUT', `removed/${uid}/${id}`, { id: Number(id), time: now, kind: 'invoice' });
+    await api('DELETE', `data/${uid}/invoices/${id}`);
+    await api('DELETE', `images/${uid}/${id}`);
+    imgs.delete(uid + '/' + id);
+  } else {
+    const v = D.find(x => x.uid === uid), pts = v ? v.points.filter(p => String(p.tripId) === String(id)) : [];
+    await api('PUT', `removed/${uid}/${id}`, { id: Number(id), time: now });
+    for (const p of pts) await api('DELETE', `data/${uid}/points/${p.id}`);
+    await api('DELETE', `data/${uid}/trips/${id}`);
+  }
+}
+document.addEventListener('click', async e => {
+  const bt = e.target.closest('.selbtn'); if (!bt) return;
+  const sc = selScope(bt), kind = sc.dataset.k;
+  const items = [...sc.querySelectorAll('input.sel:checked')].map(c => ({ uid: c.dataset.u, id: c.dataset.i }));
+  if (!items.length) return;
+  const nm = u => (D.find(x => x.uid === u) || {}).name || '';
+  const what = kind === 'inv' ? `${items.length} فاتورة` : `${items.length} رحلة (مع كل نقاطها)`;
+  const names = [...new Set(items.map(i => nm(i.uid)).filter(Boolean))].join('، ');
+  if (!await askConfirm(`حذف ${what}${names ? ' — ' + names : ''}؟\nستُحذف نهائياً من البرنامج ومن هاتف السائق، ولا يمكن التراجع.`, 'نعم، احذف')) return;
+  bt.disabled = true; let done = 0; const fails = [];
+  for (const it of items) {
+    bt.textContent = `جارٍ الحذف ${done + 1} / ${items.length}...`;
+    try { await delOne(kind, it.uid, it.id); done++; } catch (err) { fails.push(err.message); }
+  }
+  await poll(true); draw();
+  if (fails.length) await showMsg(`تم حذف ${done} وفشل ${fails.length}: ${fails[0]}\nتأكد من لصق قواعد Firebase الجديدة (قسم removed) ثم Publish.`);
+});
+
+// ---------- شاشة دخول المدير ----------
+const G = id => document.getElementById(id);
+let gMode = 'login', gFail = 0, gLockUntil = 0, gBusy = false, gTimer = null;
+function gErr(t) {
+  const e = G('gerr'); e.textContent = t || '';
+  if (t) { const c = G('gcard'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }
+}
+function gRender() {
+  const c = gMode === 'create';
+  G('gtitle').textContent = c ? 'إنشاء حساب المدير' : 'تسجيل دخول المدير';
+  G('gbtnTxt').textContent = c ? 'إنشاء الحساب والدخول' : 'دخول';
+  G('gpw2wrap').hidden = !c;
+  G('glNew').textContent = c ? '← العودة لتسجيل الدخول' : 'أول استخدام؟ إنشاء حساب المدير';
+  G('gpw').autocomplete = c ? 'new-password' : 'current-password';
+}
+function showGate(msg) {
+  locked = true; document.body.classList.add('locked');
+  gMode = 'login'; gRender();
+  G('gpw').value = ''; G('gpw2').value = ''; G('gpw').type = 'password'; G('gpw2').type = 'password';
+  G('gapi').value = cfg.api || ''; G('gdb').value = cfg.db || '';
+  G('gcfgBox').hidden = !!(cfg.api && cfg.db);
+  gErr(msg || '');
+  setTimeout(() => G(G('gcfgBox').hidden ? 'gpw' : 'gapi').focus(), 60);
+}
+function unlock() {
+  locked = false; document.body.classList.remove('locked');
+  G('gpw').value = ''; G('gpw2').value = '';
+  last = ''; tab = 'now'; draw(); poll(true);
+}
+function lock() {
+  localStorage.removeItem('adm'); tok = null; D = []; last = '';
+  showGate();
+}
+function gStartLock(sec) {
+  gLockUntil = Date.now() + sec * 1000;
+  G('gbtn').disabled = true;
+  clearInterval(gTimer);
+  const tick = () => {
+    const left = Math.ceil((gLockUntil - Date.now()) / 1000);
+    if (left <= 0) { clearInterval(gTimer); G('gbtn').disabled = false; G('gerr').textContent = ''; return; }
+    G('gerr').textContent = `محاولات خاطئة كثيرة — انتظر ${left} ثانية`;
+  };
+  tick(); gTimer = setInterval(tick, 500);
+}
+async function gSubmit() {
+  if (gBusy || Date.now() < gLockUntil) return;
+  if (!G('gcfgBox').hidden || !(cfg.api && cfg.db)) {
+    const api = G('gapi').value.trim(), db = G('gdb').value.trim();
+    if (!api || !db) return gErr('أدخل Web API Key ورابط قاعدة البيانات');
+    if (!/^https:\/\//i.test(db)) return gErr('رابط قاعدة البيانات يجب أن يبدأ بـ https://');
+    cfg = { api, db }; localStorage.setItem('cfg', JSON.stringify(cfg)); tok = null;
+  }
+  const pw = G('gpw').value;
+  if (!pw) { gErr('أدخل كلمة المرور'); return G('gpw').focus(); }
+  if (gMode === 'create') {
+    if (pw.length < 6) return gErr('كلمة المرور 6 أحرف على الأقل');
+    if (pw !== G('gpw2').value) return gErr('كلمتا المرور غير متطابقتين');
+  }
+  gBusy = true; G('gbtn').classList.add('busy'); G('gbtn').disabled = true; gErr('');
+  try {
+    saveSession(await authCall(gMode === 'create' ? 'signUp' : 'signInWithPassword', { email: ADMIN, password: pw }));
+    gFail = 0; gBusy = false; G('gbtn').classList.remove('busy'); G('gbtn').disabled = false;
+    unlock(); return;
+  } catch (e) {
+    let m = e.message || String(e);
+    if (e instanceof TypeError || /failed to fetch|network/i.test(m)) m = 'تعذّر الاتصال بالإنترنت، تحقق من الشبكة';
+    else if (/api key/i.test(m)) { m = 'Web API Key غير صحيح'; G('gcfgBox').hidden = false; }
+    else if (gMode === 'create' && /مسبقاً/.test(m)) m = 'حساب المدير موجود مسبقاً، استخدم تسجيل الدخول';
+    gErr(m);
+    if (/غير صحيحة/.test(m) && ++gFail >= 5) { gFail = 0; gStartLock(30); }
+  }
+  gBusy = false; G('gbtn').classList.remove('busy');
+  if (Date.now() >= gLockUntil) G('gbtn').disabled = false;
+  G('gpw').select();
+}
+(function () {
+  G('gbtn').onclick = gSubmit;
+  ['gpw', 'gpw2', 'gapi', 'gdb'].forEach(id => G(id).addEventListener('keydown', e => { if (e.key === 'Enter') gSubmit(); }));
+  ['gpw', 'gpw2'].forEach(id => {
+    const f = e => { G('gcaps').hidden = !(e.getModifierState && e.getModifierState('CapsLock')); };
+    G(id).addEventListener('keydown', f); G(id).addEventListener('keyup', f);
+    G(id).addEventListener('blur', () => { G('gcaps').hidden = true; });
+  });
+  G('geye').onclick = () => { const t = G('gpw').type === 'password' ? 'text' : 'password'; G('gpw').type = t; G('gpw2').type = t; G('gpw').focus(); };
+  G('glCfg').onclick = () => { G('gcfgBox').hidden = !G('gcfgBox').hidden; };
+  G('glNew').onclick = () => { gMode = gMode === 'login' ? 'create' : 'login'; gErr(''); gRender(); G('gpw').focus(); };
+  G('lk').onclick = async () => { if (await askConfirm('تسجيل الخروج وقفل البرنامج؟', 'تسجيل الخروج', false)) lock(); };
+})();
+showGate();
 draw(); poll(); setInterval(poll, 10000);
 
 // ---------- Agrimatco - Fleet: اسم الملف/العنوان عند الطباعة وحفظ PDF ----------
@@ -851,7 +1148,7 @@ function pdfName() {
 async function savePdf() {
   const d = document.getElementById('pdate'); if (d) d.textContent = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
   document.body.classList.add('pdfmode'); // الترويسة تأتي من قالب PDF (تتكرر في كل صفحة)
-  try { await window.fleetAPI.savePdf(pdfName()); } catch (e) { alert('تعذّر حفظ PDF: ' + e.message); }
+  try { await window.fleetAPI.savePdf(pdfName()); } catch (e) { showMsg('تعذّر حفظ PDF: ' + e.message); }
   document.body.classList.remove('pdfmode');
 }
 </script></body></html>

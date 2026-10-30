@@ -10,8 +10,10 @@ import android.graphics.drawable.StateListDrawable
 import android.media.ExifInterface
 import android.os.Bundle
 import android.text.InputType
+import android.text.method.PasswordTransformationMethod
 import android.util.Base64
 import android.view.*
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
@@ -499,6 +501,153 @@ class ProfileFragment : Fragment() {
 }
 
 // ---------- تبويب الحساب والمزامنة ----------
+/** تسجيل دخول السائق (يُستدعى من خيط خلفي). يعيد نص الخطأ، أو null عند النجاح */
+private fun performLogin(st: Store, cfgCode: String, user: String, pw: String): String? {
+    try {
+        var api = st.builtApi; var db = st.builtDb.trimEnd('/')
+        if (api.isEmpty() || db.isEmpty()) {
+            try {
+                val j = JSONObject(String(Base64.decode(cfgCode.trim().removePrefix("FLEET:"), Base64.DEFAULT)))
+                api = j.getString("a"); db = j.getString("d").trimEnd('/')
+            } catch (e: Exception) { throw Exception("BADCODE") }
+        }
+        val r = Cloud.signIn(api, user.trim().lowercase() + "@fleet.local", pw)
+        val uid = r.getString("localId")
+        val dr = Cloud.call("GET", "$db/drivers/$uid.json?auth=${r.getString("idToken")}", null).trim()
+        if (dr == "null") throw Exception("INACTIVE")
+        val d = JSONObject(dr)
+        if (!d.optBoolean("active")) throw Exception("INACTIVE")
+        st.apiKey = api; st.dbUrl = db; st.uid = uid
+        st.refreshToken = r.getString("refreshToken")
+        st.username = user.trim(); st.driverName = d.optString("name"); st.vehicle = d.optString("vehicle")
+        // استرجاع بيانات السائق وصورته إن كان قد أدخلها سابقاً (مثلاً بعد تسجيل الخروج)
+        try {
+            val tok = r.getString("idToken")
+            val pr = Cloud.call("GET", "$db/data/$uid/profile.json?auth=$tok", null).trim()
+            if (pr != "null") { val j = JSONObject(pr); st.profileKeys.forEach { k -> st.setProf(k, j.optString(k)) } }
+            val avr = Cloud.call("GET", "$db/avatars/$uid.json?auth=$tok", null).trim()
+            if (avr != "null" && !st.avatarFile().exists()) {
+                st.avatarFile().writeBytes(Base64.decode(org.json.JSONTokener(avr).nextValue() as String, Base64.DEFAULT))
+                st.photoUp = true; st.photoTime = System.currentTimeMillis()
+            }
+        } catch (_: Exception) { }
+        return null
+    } catch (e: Exception) {
+        val m = e.message ?: ""
+        return when {
+            e is java.net.UnknownHostException || e is java.net.SocketTimeoutException || e is java.net.ConnectException ->
+                "تعذّر الاتصال بالإنترنت، تحقق من الشبكة"
+            m.contains("BADCODE") -> "كود الإعداد غير صحيح"
+            m.contains("INVALID") || m.contains("EMAIL_NOT_FOUND") -> "اسم المستخدم أو كلمة المرور غير صحيحة"
+            m.contains("INACTIVE") -> "الحساب غير مفعّل، راجع المدير"
+            m.contains("TOO_MANY") -> "محاولات كثيرة، حاول بعد قليل"
+            else -> "تعذّر الدخول: $m"
+        }
+    }
+}
+
+/** شاشة دخول السائق: تظهر مباشرة عند فتح التطبيق قبل تسجيل الدخول */
+class LoginFragment : Fragment() {
+    override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
+        val ctx = requireContext(); val st = store()
+        val built = st.builtApi.isNotEmpty() && st.builtDb.isNotEmpty()
+        val cfg = ctx.input("كود الإعداد (يعطيك إياه المدير)")
+        val user = ctx.input("اسم المستخدم").apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = EditorInfo.IME_ACTION_NEXT
+        }
+        val pw = ctx.input("كلمة المرور").apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            imeOptions = EditorInfo.IME_ACTION_DONE
+        }
+        val status = ctx.label("", 14f).apply {
+            setTextColor(Color.parseColor("#C62828")); gravity = Gravity.CENTER
+        }
+        val show = CheckBox(ctx).apply {
+            text = "إظهار كلمة المرور"; textSize = 14f; setTextColor(Brand.ink)
+            setOnCheckedChangeListener { _, on ->
+                pw.transformationMethod = if (on) null else PasswordTransformationMethod.getInstance()
+                pw.setSelection(pw.text.length)
+            }
+        }
+        lateinit var go: Button
+        fun submit() {
+            if ((!built && cfg.text.isBlank()) || user.text.isBlank() || pw.text.isEmpty()) {
+                status.text = "أكمل كل الحقول"
+                return
+            }
+            status.text = ""
+            go.isEnabled = false; go.text = "جارٍ الدخول..."
+            val code = cfg.text.toString(); val u = user.text.toString(); val p = pw.text.toString()
+            Thread {
+                val err = performLogin(st, code, u, p)
+                activity?.runOnUiThread {
+                    if (err == null) {
+                        Syncer.run(st)
+                        (activity as? MainActivity)?.afterLogin()
+                    } else {
+                        status.text = err; go.isEnabled = true; go.text = "تسجيل الدخول"
+                    }
+                }
+            }.start()
+        }
+        go = ctx.btn("تسجيل الدخول") { submit() }
+        pw.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) { submit(); true } else false
+        }
+
+        val logo = FrameLayout(ctx).apply {
+            background = ctx.getDrawable(R.drawable.logo_badge)
+            setPadding(ctx.dp(8), ctx.dp(8), ctx.dp(8), ctx.dp(8))
+            elevation = ctx.dp(8).toFloat()
+            layoutParams = LinearLayout.LayoutParams(ctx.dp(104), ctx.dp(104))
+            addView(ImageView(ctx).apply {
+                setImageResource(R.drawable.logo); scaleType = ImageView.ScaleType.FIT_CENTER
+            })
+        }
+        val card = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(ctx.dp(20), ctx.dp(20), ctx.dp(20), ctx.dp(16))
+            background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = ctx.dp(22).toFloat() }
+            elevation = ctx.dp(10).toFloat()
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            addView(ctx.label("تسجيل دخول السائق", 19f, true).apply { gravity = Gravity.CENTER })
+            addView(ctx.label("أدخل البيانات التي أعطاك إياها المدير", 13f).apply { gravity = Gravity.CENTER })
+            if (!built) addView(cfg)
+            addView(user); addView(pw); addView(show); addView(status); addView(go)
+        }
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            setPadding(ctx.dp(20), ctx.dp(24), ctx.dp(20), ctx.dp(20))
+            addView(logo)
+            addView(TextView(ctx).apply {
+                text = "Agrimatco - Fleet"; textSize = 26f; setTextColor(Color.WHITE)
+                setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER
+                textDirection = View.TEXT_DIRECTION_LTR
+                setShadowLayer(4f, 0f, 2f, Color.parseColor("#80000000"))
+                layoutParams = ctx.lp(14, 2)
+            })
+            addView(TextView(ctx).apply {
+                text = "متابعة المركبة والسائق"; textSize = 13f; setTextColor(Color.parseColor("#CFF0DC"))
+                gravity = Gravity.CENTER; layoutParams = ctx.lp(0, 18)
+            })
+            addView(card)
+            addView(TextView(ctx).apply {
+                text = "© Agrimatco"; textSize = 12f; setTextColor(Color.parseColor("#B3FFFFFF"))
+                gravity = Gravity.CENTER; layoutParams = ctx.lp(18, 0)
+            })
+        }
+        return ScrollView(ctx).apply {
+            isFillViewport = true
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#052619"), Color.parseColor("#0A3D24"), Color.parseColor("#0A8F4B"))
+            )
+            addView(col)
+        }
+    }
+}
+
 class SyncFragment : Fragment() {
     private var tmp: File? = null
     private val cam = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
@@ -554,41 +703,7 @@ class SyncFragment : Fragment() {
 
     private fun login(st: Store, cfgCode: String, user: String, pw: String, status: TextView) {
         Thread {
-            var err: String? = null
-            try {
-                var api = st.builtApi; var db = st.builtDb.trimEnd('/')
-                if (api.isEmpty() || db.isEmpty()) {
-                    val j = JSONObject(String(Base64.decode(cfgCode.trim().removePrefix("FLEET:"), Base64.DEFAULT)))
-                    api = j.getString("a"); db = j.getString("d").trimEnd('/')
-                }
-                val r = Cloud.signIn(api, user.trim().lowercase() + "@fleet.local", pw)
-                val uid = r.getString("localId")
-                val dr = Cloud.call("GET", "$db/drivers/$uid.json?auth=${r.getString("idToken")}", null).trim()
-                if (dr == "null") throw Exception("INACTIVE")
-                val d = JSONObject(dr)
-                if (!d.optBoolean("active")) throw Exception("INACTIVE")
-                st.apiKey = api; st.dbUrl = db; st.uid = uid
-                st.refreshToken = r.getString("refreshToken")
-                st.username = user.trim(); st.driverName = d.optString("name"); st.vehicle = d.optString("vehicle")
-                // استرجاع بيانات السائق وصورته إن كان قد أدخلها سابقاً (مثلاً بعد تسجيل الخروج)
-                try {
-                    val tok = r.getString("idToken")
-                    val pr = Cloud.call("GET", "$db/data/$uid/profile.json?auth=$tok", null).trim()
-                    if (pr != "null") { val j = JSONObject(pr); st.profileKeys.forEach { k -> st.setProf(k, j.optString(k)) } }
-                    val avr = Cloud.call("GET", "$db/avatars/$uid.json?auth=$tok", null).trim()
-                    if (avr != "null" && !st.avatarFile().exists()) {
-                        st.avatarFile().writeBytes(Base64.decode(org.json.JSONTokener(avr).nextValue() as String, Base64.DEFAULT))
-                        st.photoUp = true; st.photoTime = System.currentTimeMillis()
-                    }
-                } catch (_: Exception) { }
-            } catch (e: Exception) {
-                val m = e.message ?: ""
-                err = when {
-                    m.contains("INVALID") || m.contains("EMAIL_NOT_FOUND") -> "اسم المستخدم أو كلمة المرور غير صحيحة"
-                    m.contains("INACTIVE") -> "الحساب غير مفعّل، راجع المدير"
-                    else -> "تعذّر الدخول: $m"
-                }
-            }
+            val err = performLogin(st, cfgCode, user, pw)
             activity?.runOnUiThread {
                 if (err == null) {
                     Syncer.run(st)
@@ -629,7 +744,7 @@ class SyncFragment : Fragment() {
                         status.text = "جارٍ المزامنة قبل الخروج..."
                         Syncer.run(st) { m ->
                             activity?.runOnUiThread {
-                                if (m.contains("✓")) { st.logout(); reload() } else status.text = "لم يتم الخروج: $m"
+                                if (m.contains("✓")) { st.logout(); (activity as? MainActivity)?.showLogin() } else status.text = "لم يتم الخروج: $m"
                             }
                         }
                     }

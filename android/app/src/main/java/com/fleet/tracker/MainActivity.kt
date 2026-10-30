@@ -9,6 +9,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 class MainActivity : AppCompatActivity() {
     lateinit var store: Store
     private lateinit var nav: BottomNavigationView
+    private lateinit var header: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -16,6 +17,7 @@ class MainActivity : AppCompatActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         setContentView(R.layout.activity_main)
         nav = findViewById(R.id.nav)
+        header = findViewById(R.id.header)
         nav.setOnItemSelectedListener {
             show(when (it.itemId) {
                 R.id.t_trip -> if (needProfile()) ProfileFragment() else TripFragment()
@@ -24,7 +26,9 @@ class MainActivity : AppCompatActivity() {
             })
             true
         }
-        if (savedInstanceState == null) nav.selectedItemId = R.id.t_trip
+        if (savedInstanceState == null) {
+            if (store.configured()) nav.selectedItemId = R.id.t_trip else showLogin()
+        } else setChrome(store.configured())
         SyncWorker.schedulePeriodic(this)
     }
 
@@ -34,6 +38,23 @@ class MainActivity : AppCompatActivity() {
     /** بعد حفظ البيانات: العودة لتبويب الرحلة */
     fun afterProfile() {
         if (nav.selectedItemId == R.id.t_trip) show(TripFragment()) else nav.selectedItemId = R.id.t_trip
+    }
+
+    private fun setChrome(on: Boolean) {
+        val v = if (on) View.VISIBLE else View.GONE
+        header.visibility = v; nav.visibility = v
+    }
+
+    /** شاشة دخول السائق تظهر مباشرة بدون شريط التنقل */
+    fun showLogin() {
+        setChrome(false)
+        show(LoginFragment())
+    }
+
+    /** بعد نجاح الدخول: عرض التطبيق (بيانات السائق أولاً إن لم تكتمل) */
+    fun afterLogin() {
+        setChrome(true)
+        nav.selectedItemId = R.id.t_trip
     }
 
     fun show(f: Fragment) {

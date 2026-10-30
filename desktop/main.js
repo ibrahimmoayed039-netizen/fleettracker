@@ -42,7 +42,7 @@ ipcMain.handle('save-pdf', async (e, name) => {
     defaultPath: safe + '.pdf',
     filters: [{ name: 'PDF', extensions: ['pdf'] }]
   });
-  if (r.canceled || !r.filePath) return { ok: false };
+  if (r.canceled || !r.filePath) { try { w.focus(); w.webContents.focus(); } catch (e) {} return { ok: false }; }
   const t = pdfTemplates();
   const data = await w.webContents.printToPDF({
     printBackground: true, pageSize: 'A4',
@@ -51,6 +51,7 @@ ipcMain.handle('save-pdf', async (e, name) => {
   });
   fs.writeFileSync(r.filePath, data);
   shell.showItemInFolder(r.filePath);
+  setTimeout(() => { try { w.focus(); w.webContents.focus(); } catch (e) {} }, 400); // يمنع تجمّد حقول الإدخال بعد نوافذ النظام
   return { ok: true };
 });
 

@@ -115,13 +115,19 @@ class Store private constructor(private val ctx: Context) {
         }
         points = filtered(points, id); save()
     }
-    /** رحلات حذفها المدير: تُزال مع نقاطها من الهاتف كي لا تُرفع من جديد */
+    /** عناصر حذفها المدير (رحلات ونقاطها، فواتير): تُزال من الهاتف كي لا تُرفع من جديد */
     @Synchronized fun applyRemoved(ids: Set<Long>) {
         if (ids.isEmpty()) return
-        val np = JSONArray(); val nt = JSONArray()
+        val np = JSONArray(); val nt = JSONArray(); val ni = JSONArray()
         for (i in 0 until points.length()) { val p = points.getJSONObject(i); if (p.optLong("tripId") !in ids) np.put(p) }
         for (i in 0 until trips.length()) { val t = trips.getJSONObject(i); if (t.getLong("id") !in ids) nt.put(t) }
-        if (np.length() != points.length() || nt.length() != trips.length()) { points = np; trips = nt; save() }
+        for (i in 0 until invoices.length()) {
+            val o = invoices.getJSONObject(i)
+            if (o.getLong("id") in ids) File(invDir(), o.optString("file")).delete() else ni.put(o)
+        }
+        if (np.length() != points.length() || nt.length() != trips.length() || ni.length() != invoices.length()) {
+            points = np; trips = nt; invoices = ni; save()
+        }
     }
     fun delInvoice(id: Long) { invoices = filtered(invoices, id); save() }
 
