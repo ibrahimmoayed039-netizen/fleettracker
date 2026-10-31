@@ -25,6 +25,10 @@
         ".write": "auth.uid === $uid && root.child('drivers').child($uid).child('active').val() === true"
       }
     },
+    "secrets": {
+      ".read": "auth.token.email === 'admin@fleet.local'",
+      ".write": "auth.token.email === 'admin@fleet.local'"
+    },
     "maintenance": {
       ".read": "auth.token.email === 'admin@fleet.local'",
       ".write": "auth.token.email === 'admin@fleet.local'"
