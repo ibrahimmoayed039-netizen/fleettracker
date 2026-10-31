@@ -215,6 +215,11 @@ tr.pk>td{background:#fdeaea!important}
 #dlg .dbt{display:flex;gap:10px;justify-content:flex-start}
 #dlg .dbt button{margin:0;min-width:110px}
 #dlg .dbt .cn{background:linear-gradient(#fff,#e9efeb);color:#2c3e34;text-shadow:none;box-shadow:0 4px 0 #c5d3ca,0 9px 14px #0a3d2420,inset 0 1px 0 #fff}
+
+.crtbl td{vertical-align:middle}
+.crtbl .pwv{font-family:Consolas,monospace;direction:ltr;display:inline-block;min-width:110px;text-align:left;letter-spacing:1px}
+.crtbl button{margin:2px}
+.crnote{color:#a15c00;background:#fff4e0;border-radius:8px;padding:6px 10px;margin:8px 0;font-size:12.5px}
 </style></head><body class="locked">
 <div id="gate">
   <div class="gbg"><i></i><i></i><i></i></div>
@@ -293,20 +298,21 @@ function applyTabs() {
 const imgs = new Map();
 const $ = s => document.querySelector(s);
 // ---------- نوافذ التأكيد والتنبيه داخل البرنامج (بدل نوافذ النظام التي تجمّد حقول الإدخال في Electron) ----------
-function dlgOpen(msg, okTxt, cancelTxt, danger) {
+function dlgOpen(msg, okTxt, cancelTxt, danger, inp) {
   return new Promise(res => {
     let box = document.getElementById('dlg');
     if (!box) { box = document.createElement('div'); box.id = 'dlg'; document.body.appendChild(box); }
     const prev = document.activeElement;
-    box.innerHTML = `<div class="db ${danger ? 'danger' : ''}" role="dialog" aria-modal="true"><p class="dm"></p><div class="dbt"><button type="button" class="p ${danger ? 'r' : ''}" id="dok"></button>${cancelTxt ? '<button type="button" class="p cn" id="dcn"></button>' : ''}</div></div>`;
+    box.innerHTML = `<div class="db ${danger ? 'danger' : ''}" role="dialog" aria-modal="true"><p class="dm"></p>${inp ? '<input id="dinp" type="password" dir="ltr" autocomplete="off" style="width:100%;margin:0 0 14px">' : ''}<div class="dbt"><button type="button" class="p ${danger ? 'r' : ''}" id="dok"></button>${cancelTxt ? '<button type="button" class="p cn" id="dcn"></button>' : ''}</div></div>`;
     box.querySelector('.dm').textContent = msg;
     box.querySelector('#dok').textContent = okTxt;
     if (cancelTxt) box.querySelector('#dcn').textContent = cancelTxt;
     const done = v => {
+      const val = inp ? (box.querySelector('#dinp') || {}).value : undefined;
       document.removeEventListener('keydown', key, true);
       box.classList.remove('on'); box.innerHTML = '';
       try { if (prev && prev.focus && document.body.contains(prev)) prev.focus(); } catch {}
-      res(v);
+      res(inp ? (v ? val : null) : v);
     };
     const key = e => {
       if (e.key === 'Escape') { e.preventDefault(); done(false); }
@@ -316,11 +322,12 @@ function dlgOpen(msg, okTxt, cancelTxt, danger) {
     box.querySelector('#dok').onclick = () => done(true);
     const cn = box.querySelector('#dcn'); if (cn) cn.onclick = () => done(false);
     box.classList.add('on');
-    setTimeout(() => (cn || box.querySelector('#dok')).focus(), 30);
+    setTimeout(() => (inp ? box.querySelector('#dinp') : (cn || box.querySelector('#dok'))).focus(), 30);
   });
 }
 const askConfirm = (msg, okTxt = 'تأكيد', danger = true) => dlgOpen(msg, okTxt, 'إلغاء', danger);
 const showMsg = msg => dlgOpen(msg, 'حسناً', '', false);
+const askText = msg => dlgOpen(msg, 'متابعة', 'تخطي', false, true);
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
@@ -832,6 +839,7 @@ setInterval(() => { if (tab === 'now') draw(); }, 30000);
 
 // ---------- الرسم ----------
 function draw() {
+  if (tab !== 'set' && credsUntil) hideCreds();
   applyTabs();
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   badges();
@@ -884,13 +892,16 @@ function drawDrivers(m) {
     <input id="d4" placeholder="رقم / اسم المركبة المخصصة">
     <button class="p" id="add">إضافة السائق</button><div class="msg" id="dm">${esc(flash)}</div></div>
     <h3>السائقون (${D.length})</h3>
-    <table><tr><th></th><th>الاسم</th><th>المستخدم</th><th>المركبة</th><th>الحالة</th><th></th></tr>
-    ${D.map(v => `<tr class="${v.active ? '' : 'off'}"><td>${av(v.uid)}</td><td><input data-f="n" data-u="${esc(v.uid)}" value="${esc(v.name)}"></td>
+    ${D.length ? `<div class="selscope" data-k="drv"><div class="selbar noprint"><label><input type="checkbox" class="selall"> تحديد الكل</label><span class="selcnt">لم يُحدَّد شيء</span>
+      <button type="button" class="p r selbtn" disabled>🗑 حذف المحدد</button></div>` : ''}
+    <table><tr><th>اختيار</th><th></th><th>الاسم</th><th>المستخدم</th><th>المركبة</th><th>الحالة</th><th></th></tr>
+    ${D.map(v => `<tr class="${v.active ? '' : 'off'}"><td><input type="checkbox" class="sel" data-k="drv" data-u="${esc(v.uid)}" data-i="${esc(v.uid)}"></td><td>${av(v.uid)}</td><td><input data-f="n" data-u="${esc(v.uid)}" value="${esc(v.name)}"></td>
       <td dir="ltr">${esc(v.username)}</td>
       <td><input data-f="v" data-u="${esc(v.uid)}" value="${esc(v.vehicle)}"></td>
       <td>${v.active ? 'مفعّل' : 'معطّل'}</td>
       <td><button class="p sv" data-u="${esc(v.uid)}">حفظ</button>
-      <button class="p ${v.active ? 'r' : ''} tg" data-u="${esc(v.uid)}">${v.active ? 'تعطيل' : 'تفعيل'}</button></td></tr>`).join('')}</table>`;
+      <button class="p ${v.active ? 'r' : ''} tg" data-u="${esc(v.uid)}">${v.active ? 'تعطيل' : 'تفعيل'}</button></td></tr>`).join('')}</table>${D.length ? '</div>' : ''}
+    <p><small>«تعطيل» يوقف دخول السائق ويحفظ سجلاته. «حذف» يمسح الحساب وكل بياناته نهائياً، وبإدخال كلمة مرور السائق يُحذف حساب الدخول أيضاً ويتحرر اسم المستخدم.</small></p>`;
   flash = '';
   const say = (t, ok) => { const e = $('#dm'); e.textContent = t; e.className = 'msg' + (ok ? ' ok' : ''); };
   $('#add').onclick = async () => {
@@ -903,6 +914,8 @@ function drawDrivers(m) {
       const j = await authCall('signUp', { email: user + '@fleet.local', password: pw });
       await api('PUT', 'drivers/' + j.localId, { name, username: user, vehicle: veh, active: true, created: Date.now() });
       flash = 'تمت إضافة السائق ✓ — أعطه كود الإعداد واسم المستخدم وكلمة المرور';
+      try { await api('PUT', 'secrets/' + j.localId, { username: user, password: pw, saved: Date.now() }); }
+      catch { flash += ' (لم تُحفظ كلمة المرور للعرض: حدّث قواعد Firebase ثم Publish)'; }
       await poll(true); draw();
     } catch (e) { say(e.message); }
   };
@@ -918,6 +931,64 @@ function drawDrivers(m) {
   });
 }
 
+
+// ---------- بيانات دخول السائقين (محمية بكلمة مرور المدير) ----------
+let CREDS = null, credsUntil = 0, credsTimer = null, credsMsg = '';
+function hideCreds() { CREDS = null; credsUntil = 0; clearTimeout(credsTimer); }
+function copyText(t) {
+  try { navigator.clipboard.writeText(t); return; } catch {}
+  const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove();
+}
+function drawCreds() {
+  const box = $('#crbox'); if (!box) return;
+  if (!CREDS || Date.now() > credsUntil) {
+    hideCreds();
+    box.innerHTML = `<input id="crpw" type="password" placeholder="كلمة مرور المدير" autocomplete="off">
+      <button class="p" id="crgo">إظهار البيانات</button><div class="msg" id="crm">${esc(credsMsg)}</div>`;
+    credsMsg = '';
+    const go = async () => {
+      const pw = $('#crpw').value, m = $('#crm'); if (!pw) { m.textContent = 'أدخل كلمة مرور المدير'; return; }
+      m.className = 'msg ok'; m.textContent = 'جارٍ التحقق...';
+      try {
+        await authCall('signInWithPassword', { email: ADMIN, password: pw });
+        CREDS = (await api('GET', 'secrets')) || {};
+        credsUntil = Date.now() + 60000;
+        clearTimeout(credsTimer); credsTimer = setTimeout(() => { hideCreds(); drawCreds(); }, 60000);
+        drawCreds();
+      } catch (e) { m.className = 'msg'; m.textContent = /PERMISSION|Permission/.test(e.message) ? 'حدّث قواعد Firebase (قسم secrets) ثم Publish' : e.message; }
+    };
+    $('#crgo').onclick = go; $('#crpw').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    return;
+  }
+  const rows = D.map(v => {
+    const c = CREDS[v.uid] || {};
+    return `<tr><td>${esc(v.name)}</td><td dir="ltr">${esc(v.username)}</td>
+      <td>${c.password ? `<span class="pwv" data-pw="${esc(c.password)}">••••••••</span>
+        <button class="p cvw">👁</button><button class="p cpy" data-t="${esc(c.password)}">📋 نسخ</button>`
+        : `<small>غير محفوظة</small> <button class="p cadd" data-u="${esc(v.uid)}">إدخال</button>`}</td>
+      <td><button class="p cpu" data-t="${esc(v.username)}">📋 المستخدم</button></td></tr>`;
+  }).join('');
+  box.innerHTML = `<table class="crtbl"><tr><th>السائق</th><th>اسم المستخدم</th><th>كلمة المرور</th><th></th></tr>${rows || '<tr><td colspan="4">لا يوجد سائقون</td></tr>'}</table>
+    <div class="crnote">⚠ احرص ألا يرى أحد الشاشة. تُخفى البيانات تلقائياً بعد دقيقة.</div>
+    <button class="p r" id="crhide">إخفاء الآن</button><div class="msg" id="crm">${esc(credsMsg)}</div>`;
+  credsMsg = '';
+  $('#crhide').onclick = () => { hideCreds(); drawCreds(); };
+  box.querySelectorAll('.cvw').forEach(b => b.onclick = () => { const sp = b.previousElementSibling; sp.textContent = sp.textContent.includes('•') ? sp.dataset.pw : '••••••••'; });
+  box.querySelectorAll('.cpy,.cpu').forEach(b => b.onclick = () => { copyText(b.dataset.t); const o = b.textContent; b.textContent = '✓ تم'; setTimeout(() => { b.textContent = o; }, 1200); });
+  box.querySelectorAll('.cadd').forEach(b => b.onclick = async () => {
+    const v = D.find(x => x.uid === b.dataset.u); if (!v) return;
+    let hint = '';
+    for (let k = 0; k < 3; k++) {
+      const pw = await askText(`${hint}أدخل كلمة مرور السائق «${v.name}» (${v.username}) ليُحفظ ويظهر هنا`);
+      if (!pw) return;
+      try {
+        await authCall('signInWithPassword', { email: v.username + '@fleet.local', password: pw });
+        await api('PUT', `secrets/${v.uid}`, { username: v.username, password: pw, saved: Date.now() });
+        CREDS[v.uid] = { username: v.username, password: pw }; credsMsg = 'تم الحفظ ✓'; drawCreds(); return;
+      } catch (e) { hint = '⚠ ' + e.message + '\n'; }
+    }
+  });
+}
 function drawSettings(m) {
   const logged = !!localStorage.getItem('adm');
   const code = (cfg.api && cfg.db) ? 'FLEET:' + btoa(JSON.stringify({ a: cfg.api, d: cfg.db.replace(/\/+$/, '') })) : '';
@@ -940,7 +1011,11 @@ function drawSettings(m) {
       <div class="tabsel">${TABS.map(([k, l]) => `<label><input type="checkbox" data-tb="${k}" ${hiddenTabs.includes(k) ? '' : 'checked'}> ${l}</label>`).join('')}
         <label class="fixed"><input type="checkbox" checked disabled> الإعدادات</label></div>
       <button class="p" id="tball">إظهار الكل</button>
-      <div class="msg" id="tbm"></div></div></div>`;
+      <div class="msg" id="tbm"></div></div>
+    ${logged ? `<div class="card"><h3>${code ? '5' : '4'}) بيانات دخول السائقين</h3>
+      <small>أسماء المستخدمين وكلمات المرور. لا تظهر إلا بعد إدخال كلمة مرور المدير، وتُخفى تلقائياً بعد دقيقة.</small>
+      <div id="crbox"></div></div>` : ''}</div>`;
+  if (logged) drawCreds();
   const say = (t, ok) => { const e = $('#sm'); e.textContent = t; e.className = 'msg' + (ok ? ' ok' : ''); };
   $('#sv').onclick = () => {
     cfg = { api: $('#c1').value.trim(), db: $('#c2').value.trim() };
@@ -1009,13 +1084,27 @@ document.addEventListener('change', e => {
   else if (!c.classList.contains('sel')) return;
   selRefresh(sc);
 });
-async function delOne(kind, uid, id) {
+let freedCnt = 0;
+async function delOne(kind, uid, id, tok) {
   const now = Date.now();
   if (kind === 'inv') {
     await api('PUT', `removed/${uid}/${id}`, { id: Number(id), time: now, kind: 'invoice' });
     await api('DELETE', `data/${uid}/invoices/${id}`);
     await api('DELETE', `images/${uid}/${id}`);
     imgs.delete(uid + '/' + id);
+  } else if (kind === 'drv') {
+    // 1) تعطيل أولاً كي لا يستطيع هاتف السائق رفع بيانات أثناء الحذف  2) مسح بياناته  3) مسح الحساب من القائمة
+    await api('PUT', `drivers/${uid}/active`, false);
+    for (const node of ['data', 'images', 'avatars', 'deletions', 'removed', 'secrets']) await api('DELETE', `${node}/${uid}`);
+    await api('DELETE', `drivers/${uid}`);
+    if (F.drv === uid) F.drv = '';
+    if (tok) {
+      try {
+        const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${encodeURIComponent(cfg.api)}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: tok }) });
+        const j = await r.json(); if (!j.error) freedCnt++;
+      } catch {}
+    }
   } else {
     const v = D.find(x => x.uid === uid), pts = v ? v.points.filter(p => String(p.tripId) === String(id)) : [];
     await api('PUT', `removed/${uid}/${id}`, { id: Number(id), time: now });
@@ -1029,14 +1118,33 @@ document.addEventListener('click', async e => {
   const items = [...sc.querySelectorAll('input.sel:checked')].map(c => ({ uid: c.dataset.u, id: c.dataset.i }));
   if (!items.length) return;
   const nm = u => (D.find(x => x.uid === u) || {}).name || '';
-  const what = kind === 'inv' ? `${items.length} فاتورة` : `${items.length} رحلة (مع كل نقاطها)`;
+  const what = kind === 'inv' ? `${items.length} فاتورة` : kind === 'drv' ? `${items.length} حساب سائق (مع كل رحلاته وفواتيره وبياناته)` : `${items.length} رحلة (مع كل نقاطها)`;
+  const warn = kind === 'drv' ? 'سيُحذف الحساب وكل بياناته نهائياً ولن يستطيع السائق الدخول بعدها.\nللاحتفاظ بالسجلات استخدم «تعطيل» بدلاً من الحذف.' : 'ستُحذف نهائياً من البرنامج ومن هاتف السائق.';
   const names = [...new Set(items.map(i => nm(i.uid)).filter(Boolean))].join('، ');
-  if (!await askConfirm(`حذف ${what}${names ? ' — ' + names : ''}؟\nستُحذف نهائياً من البرنامج ومن هاتف السائق، ولا يمكن التراجع.`, 'نعم، احذف')) return;
+  if (!await askConfirm(`حذف ${what}${names ? ' — ' + names : ''}؟\n${warn}\nلا يمكن التراجع.`, 'نعم، احذف')) return;
+  freedCnt = 0;
+  if (kind === 'drv') {
+    for (const it of items) {
+      const v = D.find(x => x.uid === it.uid); if (!v) continue;
+      try { // كلمة المرور المحفوظة في الإعدادات (إن وُجدت): بدون سؤال
+        const sv = await api('GET', `secrets/${it.uid}`);
+        if (sv && sv.password) it.tok = (await authCall('signInWithPassword', { email: v.username + '@fleet.local', password: sv.password })).idToken;
+      } catch {}
+      let hint = '';
+      for (let k = 0; k < 3 && !it.tok; k++) {
+        const pw = await askText(`${hint}كلمة مرور السائق «${v.name}» (${v.username})\nلحذف حساب الدخول نهائياً وتحرير اسم المستخدم.\nاضغط «تخطي» إن لم تعرفها (يُحذف السائق وبياناته ويبقى الاسم محجوزاً).`);
+        if (!pw) break;
+        try { it.tok = (await authCall('signInWithPassword', { email: v.username + '@fleet.local', password: pw })).idToken; }
+        catch (err) { hint = '⚠ ' + err.message + '\n'; }
+      }
+    }
+  }
   bt.disabled = true; let done = 0; const fails = [];
   for (const it of items) {
     bt.textContent = `جارٍ الحذف ${done + 1} / ${items.length}...`;
-    try { await delOne(kind, it.uid, it.id); done++; } catch (err) { fails.push(err.message); }
+    try { await delOne(kind, it.uid, it.id, it.tok); done++; } catch (err) { fails.push(err.message); }
   }
+  if (kind === 'drv' && done) flash = `تم حذف ${done} حساب ✓` + (freedCnt === done ? ' — وتحرّرت أسماء المستخدمين لإعادة استخدامها' : freedCnt ? ` — تحرّر ${freedCnt} اسم، والباقي محجوز (احذفه من Firebase Console ← Authentication ← Users)` : ' — أسماء المستخدمين ما زالت محجوزة (احذفها من Firebase Console ← Authentication ← Users)');
   await poll(true); draw();
   if (fails.length) await showMsg(`تم حذف ${done} وفشل ${fails.length}: ${fails[0]}\nتأكد من لصق قواعد Firebase الجديدة (قسم removed) ثم Publish.`);
 });
@@ -1071,6 +1179,7 @@ function unlock() {
   last = ''; tab = 'now'; draw(); poll(true);
 }
 function lock() {
+  hideCreds();
   localStorage.removeItem('adm'); tok = null; D = []; last = '';
   showGate();
 }
