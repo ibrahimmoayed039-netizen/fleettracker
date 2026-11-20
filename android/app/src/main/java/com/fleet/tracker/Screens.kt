@@ -333,39 +333,167 @@ class TripFragment : Fragment() {
 }
 
 // ---------- تبويب الفواتير ----------
+/** تحويل نص رقمي (يدعم الأرقام العربية) إلى رقم */
+private fun toNum(t: String): Double? {
+    val sb = StringBuilder()
+    for (ch in t.trim()) sb.append(when (ch) {
+        in '\u0660'..'\u0669' -> '0' + (ch - '\u0660')
+        in '\u06F0'..'\u06F9' -> '0' + (ch - '\u06F0')
+        '\u066B', ',' -> '.'
+        else -> ch
+    })
+    return sb.toString().toDoubleOrNull()
+}
+private fun fmtNum(d: Double): String = if (d == Math.floor(d) && Math.abs(d) < 1e12) d.toLong().toString() else String.format(Locale.US, "%.2f", d)
+
 class InvoiceFragment : Fragment() {
     private var pending: File? = null
+    private var slot = 1
+    private var f1: File? = null
+    private var f2: File? = null
+    private var cat = "fuel"
     private lateinit var note: EditText
     private lateinit var amount: EditText
+    private lateinit var ppl: EditText
+    private lateinit var liters: EditText
+    private lateinit var fault: EditText
+    private lateinit var fuelBox: LinearLayout
+    private lateinit var maintBox: LinearLayout
+    private lateinit var otherBox: LinearLayout
+    private lateinit var prev1: ImageView
+    private lateinit var prev2: ImageView
     private lateinit var list: LinearLayout
     private lateinit var refresh: () -> Unit
+    private lateinit var showCat: () -> Unit
 
     private val cam = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        if (ok) pending?.let { addInvoice(it) }
+        if (ok) pending?.let { setSlot(it) }
     }
     private val gal = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             val f = newFile()
             requireContext().contentResolver.openInputStream(uri)?.use { inp -> f.outputStream().use { inp.copyTo(it) } }
-            addInvoice(f)
+            setSlot(f)
         }
     }
 
     private fun newFile() = File(store().invDir(), "inv_${System.currentTimeMillis()}.jpg")
 
-    private fun addInvoice(f: File) {
+    private fun setPrev(iv: ImageView, f: File?) {
+        if (f == null || !f.exists()) iv.setImageDrawable(null)
+        else iv.setImageBitmap(BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = 8 }))
+    }
+
+    private fun setSlot(f: File) {
+        if (slot == 1) { f1?.delete(); f1 = f; setPrev(prev1, f) }
+        else { f2?.delete(); f2 = f; setPrev(prev2, f) }
+    }
+
+    private fun toast(m: String) = Toast.makeText(requireContext(), m, Toast.LENGTH_SHORT).show()
+
+    private fun saveInvoice() {
         val st = store()
-        val id = f.name.removePrefix("inv_").removeSuffix(".jpg").toLong()
-        st.invoices.put(JSONObject().put("id", id).put("note", note.text.toString().trim())
-            .put("amount", amount.text.toString().trim()).put("time", id).put("file", f.name))
-        st.save(); note.text.clear(); amount.text.clear(); refresh(); Syncer.auto(requireContext(), st)
+        val a = f1 ?: return toast("أرفق صورة الفاتورة (الصورة 1)")
+        val o = JSONObject()
+        var total = toNum(amount.text.toString())
+        val noteTxt: String
+        when (cat) {
+            "fuel" -> {
+                val p = toNum(ppl.text.toString()); val l = toNum(liters.text.toString())
+                if (p == null || p <= 0) return toast("أدخل سعر اللتر")
+                if (l == null || l <= 0) return toast("أدخل عدد اللترات")
+                if (total == null || total <= 0) total = p * l
+                o.put("ppl", fmtNum(p)).put("liters", fmtNum(l))
+                noteTxt = "بانزين — ${fmtNum(l)} لتر × ${fmtNum(p)}"
+            }
+            "maint" -> {
+                val fl = fault.text.toString().trim()
+                if (fl.isEmpty()) return toast("اكتب ما هو العطل")
+                o.put("fault", fl)
+                noteTxt = "صيانة — $fl"
+            }
+            else -> noteTxt = note.text.toString().trim()
+        }
+        val id = a.name.removePrefix("inv_").removeSuffix(".jpg").toLong()
+        o.put("id", id).put("cat", cat).put("note", noteTxt)
+            .put("amount", if (total != null) fmtNum(total) else amount.text.toString().trim())
+            .put("time", id).put("file", a.name)
+        f2?.let { if (it.exists()) o.put("file2", it.name) }
+        st.invoices.put(o); st.save()
+        note.text.clear(); amount.text.clear(); ppl.text.clear(); liters.text.clear(); fault.text.clear()
+        f1 = null; f2 = null; setPrev(prev1, null); setPrev(prev2, null)
+        refresh(); Syncer.auto(requireContext(), st)
     }
 
     override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext(); val st = store()
-        note = ctx.input("ملاحظة (مثال: وقود، صيانة)")
+        note = ctx.input("ملاحظة")
         amount = ctx.input("المبلغ", true)
+        ppl = ctx.input("سعر اللتر", true)
+        liters = ctx.input("عدد اللترات", true)
+        fault = ctx.input("ما هو العطل؟")
         list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+
+        fuelBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; addView(ppl); addView(liters) }
+        maintBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; addView(fault) }
+        otherBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; addView(note) }
+
+        // المجموع = سعر اللتر × عدد اللترات (تلقائياً، ويمكن تعديله يدوياً)
+        val calc = object : android.text.TextWatcher {
+            override fun beforeTextChanged(t: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(t: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(e: android.text.Editable?) {
+                if (cat != "fuel") return
+                val p = toNum(ppl.text.toString()); val l = toNum(liters.text.toString())
+                if (p != null && l != null) amount.setText(fmtNum(p * l))
+            }
+        }
+        ppl.addTextChangedListener(calc); liters.addTextChangedListener(calc)
+
+        showCat = {
+            fuelBox.visibility = if (cat == "fuel") View.VISIBLE else View.GONE
+            maintBox.visibility = if (cat == "maint") View.VISIBLE else View.GONE
+            otherBox.visibility = if (cat == "other") View.VISIBLE else View.GONE
+            amount.hint = if (cat == "fuel") "المجموع (يُحسب تلقائياً)" else "المبلغ"
+        }
+        val rg = RadioGroup(ctx).apply {
+            orientation = RadioGroup.HORIZONTAL
+            layoutParams = ctx.lp(4, 4)
+            listOf("fuel" to "⛽ بانزين", "maint" to "🔧 صيانة", "other" to "📝 أخرى").forEachIndexed { k, (key, txt) ->
+                addView(RadioButton(ctx).apply {
+                    id = 9100 + k; text = txt; textSize = 15f; setTextColor(Brand.ink)
+                    layoutParams = RadioGroup.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    tag = key
+                })
+            }
+            setOnCheckedChangeListener { g, checkedId ->
+                cat = g.findViewById<RadioButton>(checkedId)?.tag as? String ?: "fuel"; showCat()
+            }
+            check(9100)
+        }
+
+        fun photoSlot(n: Int, title: String): Pair<LinearLayout, ImageView> {
+            val iv = ImageView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ctx.dp(110), ctx.dp(110)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, ctx.dp(4), 0, ctx.dp(4)) }
+                scaleType = ImageView.ScaleType.CENTER_CROP; roundClip(ctx.dp(14))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#F1F5F3")); cornerRadius = ctx.dp(14).toFloat(); setStroke(ctx.dp(1), Brand.line) }
+            }
+            val btns = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(ctx.btn("📷 تصوير") { slot = n; val f = newFile(); pending = f
+                    cam.launch(FileProvider.getUriForFile(ctx, "com.fleet.tracker.provider", f)) }
+                    .apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, ctx.dp(4), ctx.dp(4), ctx.dp(4)) } })
+                addView(ctx.btn("🖼 معرض") { slot = n; gal.launch("image/*") }
+                    .apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(ctx.dp(4), ctx.dp(4), 0, ctx.dp(4)) } })
+            }
+            val box = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(ctx.label(title, 15f, true)); addView(iv); addView(btns)
+            }
+            return box to iv
+        }
+        val (box1, iv1) = photoSlot(1, "الصورة 1 (إلزامية)"); prev1 = iv1
+        val (box2, iv2) = photoSlot(2, "الصورة 2 (اختيارية)"); prev2 = iv2
 
         refresh = {
             list.removeAllViews()
@@ -376,17 +504,25 @@ class InvoiceFragment : Fragment() {
                     background = GradientDrawable().apply { setColor(Color.parseColor("#F4F9F6")); cornerRadius = ctx.dp(14).toFloat(); setStroke(ctx.dp(1), Color.parseColor("#DCE6E0")) }
                     layoutParams = ctx.lp(4, 6)
                 }
-                val img = ImageView(ctx).apply {
-                    layoutParams = LinearLayout.LayoutParams(ctx.dp(80), ctx.dp(80))
+                fun thumb(name: String) = ImageView(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams(ctx.dp(64), ctx.dp(80)).apply { setMargins(0, 0, ctx.dp(4), 0) }
                     scaleType = ImageView.ScaleType.CENTER_CROP; roundClip(context.dp(14))
-                    val p = File(st.invDir(), inv.getString("file")).path
+                    val p = File(st.invDir(), name).path
                     setImageBitmap(BitmapFactory.decodeFile(p, BitmapFactory.Options().apply { inSampleSize = 8 }))
                 }
-                row.addView(img)
-                row.addView(ctx.label("  ${inv.optString("note")}\n  المبلغ: ${inv.optString("amount")}\n  ${timeStr(inv.getLong("time"))}", 14f))
+                row.addView(thumb(inv.getString("file")))
+                inv.optString("file2").takeIf { it.isNotEmpty() }?.let { row.addView(thumb(it)) }
+                val head = when (inv.optString("cat")) {
+                    "fuel" -> "⛽ بانزين\n  سعر اللتر: ${inv.optString("ppl")} — الكمية: ${inv.optString("liters")} لتر\n  المجموع: ${inv.optString("amount")}"
+                    "maint" -> "🔧 صيانة\n  العطل: ${inv.optString("fault")}\n  المبلغ: ${inv.optString("amount")}"
+                    else -> "${inv.optString("note")}\n  المبلغ: ${inv.optString("amount")}"
+                }
+                row.addView(ctx.label("  $head\n  ${timeStr(inv.getLong("time"))}", 14f)
+                    .apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
                 row.setOnLongClickListener {
                     confirm(ctx, "حذف هذه الفاتورة؟") {
                         File(st.invDir(), inv.getString("file")).delete()
+                        inv.optString("file2").takeIf { it.isNotEmpty() }?.let { File(st.invDir(), it).delete() }
                         st.delInvoice(inv.getLong("id")); refresh(); Syncer.auto(ctx, st)
                     }
                     true
@@ -398,15 +534,14 @@ class InvoiceFragment : Fragment() {
         val root = ctx.page {
             addView(ctx.syncBanner(st))
             addView(ctx.label("فاتورة جديدة", 20f, true))
-            addView(note); addView(amount)
-            addView(ctx.btn("📷 تصوير الفاتورة") {
-                val f = newFile(); pending = f
-                cam.launch(FileProvider.getUriForFile(ctx, "com.fleet.tracker.provider", f))
-            })
-            addView(ctx.btn("🖼 اختيار من المعرض") { gal.launch("image/*") })
+            addView(rg)
+            addView(fuelBox); addView(maintBox); addView(otherBox)
+            addView(amount)
+            addView(box1); addView(box2)
+            addView(ctx.btn("✅ حفظ الفاتورة") { saveInvoice() })
             addView(list)
         }
-        refresh()
+        showCat(); refresh()
         return root
     }
 }

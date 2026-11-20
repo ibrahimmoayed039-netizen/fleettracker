@@ -141,8 +141,17 @@ object Syncer {
                 o.put("up", true)
                 st.save()
             }
+            val f2n = o.optString("file2")
+            if (f2n.isNotEmpty() && !o.optBoolean("up2")) {
+                val ff = File(st.invDir(), f2n)
+                if (ff.exists()) Cloud.call("PUT", "$base/images/$uid/${id}_2.json?auth=$token", JSONObject.quote(b64(ff)))
+                o.put("up2", true)
+                st.save()
+            }
             invs.put(id.toString(), JSONObject().put("id", id).put("note", o.optString("note"))
-                .put("amount", o.optString("amount")).put("time", o.getLong("time")))
+                .put("amount", o.optString("amount")).put("time", o.getLong("time"))
+                .put("cat", o.optString("cat")).put("ppl", o.optString("ppl")).put("liters", o.optString("liters"))
+                .put("fault", o.optString("fault")).put("img2", f2n.isNotEmpty()))
         }
         val node = JSONObject().put("name", st.driverName).put("vehicle", st.vehicle)
             .put("lastSync", System.currentTimeMillis()).put("photoTime", if (af.exists()) st.photoTime else 0L).put("points", pts).put("trips", trips).put("invoices", invs).put("profile", st.profileJson())

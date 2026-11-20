@@ -46,7 +46,7 @@ class Store private constructor(private val ctx: Context) {
     @Synchronized fun touch() { rev = rev + 1 }
     val dirty: Boolean get() = rev > syncedRev
     fun pendingChanges(): Long = maxOf(0L, rev - syncedRev)
-    fun pendingInvoices(): Int = (0 until invoices.length()).count { !invoices.getJSONObject(it).optBoolean("up") }
+    fun pendingInvoices(): Int = (0 until invoices.length()).count { val o = invoices.getJSONObject(it); !o.optBoolean("up") || (o.optString("file2").isNotEmpty() && !o.optBoolean("up2")) }
     fun pendingDeletions(): Int = (0 until deletions.length()).count { !deletions.getJSONObject(it).optBoolean("up") }
 
     private fun res(name: String): String {
@@ -123,7 +123,7 @@ class Store private constructor(private val ctx: Context) {
         for (i in 0 until trips.length()) { val t = trips.getJSONObject(i); if (t.getLong("id") !in ids) nt.put(t) }
         for (i in 0 until invoices.length()) {
             val o = invoices.getJSONObject(i)
-            if (o.getLong("id") in ids) File(invDir(), o.optString("file")).delete() else ni.put(o)
+            if (o.getLong("id") in ids) { File(invDir(), o.optString("file")).delete(); o.optString("file2").takeIf { it.isNotEmpty() }?.let { File(invDir(), it).delete() } } else ni.put(o)
         }
         if (np.length() != points.length() || nt.length() != trips.length() || ni.length() != invoices.length()) {
             points = np; trips = nt; invoices = ni; save()

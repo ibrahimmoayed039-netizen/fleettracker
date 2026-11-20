@@ -179,7 +179,7 @@ body.locked>:not(#gate){display:none!important}
 #gate .gbtn .spin{display:none;width:18px;height:18px;border-radius:50%;border:3px solid #ffffff55;border-top-color:#fff;animation:gspin .7s linear infinite}
 #gate .gbtn.busy .spin{display:block}
 @keyframes gspin{to{transform:rotate(360deg)}}
-#gate .glinks{display:flex;justify-content:space-between;gap:10px;margin-top:18px;font-size:13px}
+#gate .glinks{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:18px;font-size:13px}
 #gate .glinks a{color:#0a8f4b;cursor:pointer;font-weight:600;text-decoration:none}
 #gate .glinks a:hover{text-decoration:underline;color:#05643a}
 #gate .gcfg{background:#eef6f1;border-radius:12px;padding:12px 12px 2px;margin-bottom:14px;text-align:right}
@@ -237,6 +237,9 @@ tr.pk>td{background:#fdeaea!important}
       <div class="gfield"><input id="gdb" class="ltr" autocomplete="off" spellcheck="false" placeholder="https://xxxx.firebasedatabase.app"></div>
     </div>
 
+    <label for="gemail">بريد المدير</label>
+    <div class="gfield"><input id="gemail" class="ltr" type="email" autocomplete="username" spellcheck="false" placeholder="admin@fleet.local"></div>
+
     <label for="gpw">كلمة مرور المدير</label>
     <div class="gfield"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
       <input id="gpw" type="password" autocomplete="current-password" placeholder="أدخل كلمة المرور">
@@ -249,7 +252,7 @@ tr.pk>td{background:#fdeaea!important}
     <div class="gcaps" id="gcaps" hidden>⚠ زر Caps Lock مفعّل</div>
     <div class="gerr" id="gerr" role="alert"></div>
     <button type="button" class="gbtn" id="gbtn"><i class="spin"></i><span id="gbtnTxt">دخول</span></button>
-    <div class="glinks"><a id="glCfg">⚙ إعدادات الاتصال</a><a id="glNew">أول استخدام؟ إنشاء حساب المدير</a></div>
+    <div class="glinks"><a id="glForgot">نسيت كلمة المرور؟</a><a id="glCfg">⚙ إعدادات الاتصال</a><a id="glNew">أول استخدام؟ إنشاء حساب المدير</a></div>
   </div>
   <div class="gfoot">© Agrimatco — جميع الحقوق محفوظة &nbsp;|&nbsp; v1.2.0</div>
 </div>
@@ -282,7 +285,8 @@ tr.pk>td{background:#fdeaea!important}
 </div>
 <div id="ov" onclick="this.style.display='none'"><img id="ovi"></div>
 <script>
-const ADMIN = 'admin@fleet.local';
+const DEFAULT_ADMIN = 'admin@fleet.local';
+let ADMIN = localStorage.getItem('adminEmail') || DEFAULT_ADMIN; // بريد المدير (يمكن أن يكون بريداً حقيقياً)
 let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('cfg') || '{}'); } catch {}
 let D = [], sel = '', last = '', tok = null, tokExp = 0, flash = '';
 let tab = (cfg.api && cfg.db && localStorage.getItem('adm')) ? 'now' : 'set';
@@ -403,6 +407,10 @@ function tripsTbl(v) {
       return `<tr><td>${when(t.startTime)}</td><td>${end ? when(end) : '<b>جارية</b>'}</td><td>${dur((end || Date.now()) - t.startTime)}</td><td>${fmt(odo - t.startOdo)} كم</td><td>${stops.length}</td><td>${dur(stopMs)}</td><td class="noprint"><input type="checkbox" class="sel" data-k="trip" data-u="${esc(v.uid)}" data-i="${t.id}"></td></tr>`;
     }).join('')}</table></div>`;
 }
+// تفاصيل الفاتورة حسب التصنيف (بانزين / صيانة / أخرى)
+const invDet = i => i.cat === 'fuel' ? `⛽ بانزين — سعر اللتر: ${esc(i.ppl)} — الكمية: ${esc(i.liters)} لتر`
+  : i.cat === 'maint' ? `🔧 صيانة — العطل: ${esc(i.fault)}` : esc(i.note);
+const invImgs = i => `<img data-v="${esc(i.uid)}" data-id="${i.id}">` + (i.img2 ? `<img data-v="${esc(i.uid)}" data-id="${i.id}_2">` : '');
 async function loadImg(el) {
   const k = el.dataset.v + '/' + el.dataset.id;
   try {
@@ -587,8 +595,8 @@ function drawFiltered(m, kind) {
         ${Object.keys(by).length > 1 ? '<div class="card">' + Object.entries(by).map(([k, v]) => `<span class="chip">${esc(k)}: ${money(v)}</span>`).join('') + '</div>' : ''}
         ${all.length ? `<div class="selscope" data-k="inv"><div class="selbar noprint"><label><input type="checkbox" class="selall"> تحديد الكل (${all.length})</label><span class="selcnt">لم يُحدَّد شيء</span>
           <button type="button" class="p r selbtn" disabled>🗑 حذف المحدد</button></div>` : ''}
-        <div class="grid">${all.map(i => `<div class="card" style="position:relative"><label class="selpos noprint"><input type="checkbox" class="sel" data-k="inv" data-u="${esc(i.uid)}" data-i="${i.id}"></label><img data-v="${esc(i.uid)}" data-id="${i.id}">
-        <div>${av(i.uid)} <b>${esc(i.car)}</b>${i.veh ? ' — ' + esc(i.veh) : ''} — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('')}</div>${all.length ? '</div>' : ''}
+        <div class="grid">${all.map(i => `<div class="card" style="position:relative"><label class="selpos noprint"><input type="checkbox" class="sel" data-k="inv" data-u="${esc(i.uid)}" data-i="${i.id}"></label>${invImgs(i)}
+        <div>${av(i.uid)} <b>${esc(i.car)}</b>${i.veh ? ' — ' + esc(i.veh) : ''} — ${invDet(i)}</div><div>${i.cat === 'fuel' ? 'المجموع' : 'المبلغ'}: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('')}</div>${all.length ? '</div>' : ''}
         ${all.length ? '' : '<p>لا نتائج مطابقة.</p>'}`;
     }
     const r = $('#res'); r.innerHTML = h;
@@ -872,8 +880,8 @@ function draw() {
       ${s.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${fmt(r.odo)}${edTag(r)}</td><td>${i ? fmt(r.seg) + ' كم' : '-'}</td><td>${when(r.time)}</td><td>${kindIc(r)}</td><td>${stopDur(r)}</td></tr>`).join('')}</table>${tripsTbl(v)}`;
   } else {
     const all = act.flatMap(v => v.invoices.map(i => ({ ...i, car: v.name, uid: v.uid }))).sort((a, b) => b.time - a.time);
-    h = '<div class="grid">' + all.map(i => `<div class="card"><img data-v="${esc(i.uid)}" data-id="${i.id}">
-      <div><b>${esc(i.car)}</b> — ${esc(i.note)}</div><div>المبلغ: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('') + '</div>';
+    h = '<div class="grid">' + all.map(i => `<div class="card">${invImgs(i)}
+      <div><b>${esc(i.car)}</b> — ${invDet(i)}</div><div>${i.cat === 'fuel' ? 'المجموع' : 'المبلغ'}: ${esc(i.amount)}</div><small>${when(i.time)}</small></div>`).join('') + '</div>';
   }
   m.innerHTML = (tab === 'cars' ? delBanner() + mntBanner() : '') + h;
   m.querySelectorAll('.card.click').forEach(c => c.onclick = () => { F.drv = c.dataset.u; tab = 'det'; draw(); });
@@ -1091,7 +1099,8 @@ async function delOne(kind, uid, id, tok) {
     await api('PUT', `removed/${uid}/${id}`, { id: Number(id), time: now, kind: 'invoice' });
     await api('DELETE', `data/${uid}/invoices/${id}`);
     await api('DELETE', `images/${uid}/${id}`);
-    imgs.delete(uid + '/' + id);
+    await api('DELETE', `images/${uid}/${id}_2`).catch(() => {});
+    imgs.delete(uid + '/' + id); imgs.delete(uid + '/' + id + '_2');
   } else if (kind === 'drv') {
     // 1) تعطيل أولاً كي لا يستطيع هاتف السائق رفع بيانات أثناء الحذف  2) مسح بياناته  3) مسح الحساب من القائمة
     await api('PUT', `drivers/${uid}/active`, false);
@@ -1168,8 +1177,11 @@ function showGate(msg) {
   locked = true; document.body.classList.add('locked');
   gMode = 'login'; gRender();
   G('gpw').value = ''; G('gpw2').value = ''; G('gpw').type = 'password'; G('gpw2').type = 'password';
-  G('gapi').value = cfg.api || ''; G('gdb').value = cfg.db || '';
-  G('gcfgBox').hidden = !!(cfg.api && cfg.db);
+  const cfgOk = !!(cfg.api && cfg.db);
+  // بعد الإعداد الأول لا تُعرض بيانات الاتصال ولا رابط إظهارها على شاشة الدخول
+  G('gapi').value = ''; G('gdb').value = ''; G('gemail').value = ADMIN;
+  G('glCfg').hidden = cfgOk;
+  G('gcfgBox').hidden = cfgOk;
   gErr(msg || '');
   setTimeout(() => G(G('gcfgBox').hidden ? 'gpw' : 'gapi').focus(), 60);
 }
@@ -1202,6 +1214,9 @@ async function gSubmit() {
     if (!/^https:\/\//i.test(db)) return gErr('رابط قاعدة البيانات يجب أن يبدأ بـ https://');
     cfg = { api, db }; localStorage.setItem('cfg', JSON.stringify(cfg)); tok = null;
   }
+  const em = G('gemail').value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return gErr('أدخل بريداً صحيحاً للمدير');
+  ADMIN = em; localStorage.setItem('adminEmail', em);
   const pw = G('gpw').value;
   if (!pw) { gErr('أدخل كلمة المرور'); return G('gpw').focus(); }
   if (gMode === 'create') {
@@ -1227,13 +1242,26 @@ async function gSubmit() {
 }
 (function () {
   G('gbtn').onclick = gSubmit;
-  ['gpw', 'gpw2', 'gapi', 'gdb'].forEach(id => G(id).addEventListener('keydown', e => { if (e.key === 'Enter') gSubmit(); }));
+  ['gemail', 'gpw', 'gpw2', 'gapi', 'gdb'].forEach(id => G(id).addEventListener('keydown', e => { if (e.key === 'Enter') gSubmit(); }));
   ['gpw', 'gpw2'].forEach(id => {
     const f = e => { G('gcaps').hidden = !(e.getModifierState && e.getModifierState('CapsLock')); };
     G(id).addEventListener('keydown', f); G(id).addEventListener('keyup', f);
     G(id).addEventListener('blur', () => { G('gcaps').hidden = true; });
   });
   G('geye').onclick = () => { const t = G('gpw').type === 'password' ? 'text' : 'password'; G('gpw').type = t; G('gpw2').type = t; G('gpw').focus(); };
+  G('glForgot').onclick = async () => {
+    const em = G('gemail').value.trim().toLowerCase();
+    if (!cfg.api) { G('gcfgBox').hidden = false; return gErr('أدخل Web API Key أولاً'); }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return gErr('أدخل بريد المدير أولاً');
+    if (/@fleet\.local$/i.test(em)) return gErr('هذا بريد وهمي ولا يستقبل رسائل، استخدم بريداً حقيقياً للمدير');
+    try {
+      const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=' + encodeURIComponent(cfg.api),
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestType: 'PASSWORD_RESET', email: em }) });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error.message === 'EMAIL_NOT_FOUND' ? 'لا يوجد حساب بهذا البريد' : tr(j.error.message));
+      gErr(''); showMsg('أُرسل رابط استعادة كلمة المرور إلى ' + em + ' (راجع Spam أيضاً)');
+    } catch (e) { gErr(e.message); }
+  };
   G('glCfg').onclick = () => { G('gcfgBox').hidden = !G('gcfgBox').hidden; };
   G('glNew').onclick = () => { gMode = gMode === 'login' ? 'create' : 'login'; gErr(''); gRender(); G('gpw').focus(); };
   G('lk').onclick = async () => { if (await askConfirm('تسجيل الخروج وقفل البرنامج؟', 'تسجيل الخروج', false)) lock(); };
